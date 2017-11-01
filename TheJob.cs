@@ -143,7 +143,7 @@ namespace GmTool {
                                                                opt.MapsourceNoMDRfile.IsSet ? opt.MapsourceNoMDRfile.ValueAsBool : false,
                                                                opt.MapsourceNoInstfiles.IsSet ? opt.MapsourceNoInstfiles.ValueAsBool : false,
 
-                                                               opt.Version.IsSet ? (ushort)opt.Version.ValueAsUInt : (ushort)100,
+                                                               opt.Version.IsSet ? (ushort)opt.Version.ValueAsInt : (ushort)100,
                                                                opt.Routable.IsSet ? (byte)opt.Routable.ValueAsInt : (byte)0,
                                                                opt.MapFamilyName.IsSet ? opt.MapFamilyName.ValueAsString : null,
                                                                opt.MapSeriesName.IsSet ? opt.MapSeriesName.ValueAsString : null,
