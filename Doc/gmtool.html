@@ -1,0 +1,212 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>GMTool</title>
+	<meta charset="utf-8" />
+   <style type="text/css">
+      body {
+         font-size: 10pt;
+         font-family: Arial,Helvetica,sans-serif;
+         background-color: #ffffff;
+      }
+
+      h1 {
+         margin: 0;
+         padding: 0.5em;
+         text-decoration: none;
+         font-weight: normal;
+         font-style: normal;
+         text-align: left;
+         font-size: 2em;
+         color: #000000;
+         background-color: #ccccff;
+         min-width: 10em;
+      }
+
+      h2 {
+         margin: 0;
+         padding: 0.5em;
+         min-width: 10em;
+         background-color: #ccccff;
+         font-weight: normal;
+         text-align: left;
+         color: #000000;
+         font-size: 1.5em;
+         text-decoration: none;
+         font-style: normal;
+      }
+
+      h3 {
+         margin: 0;
+         padding: 0.5em;
+         min-width: 10em;
+         background-color: #ccccff;
+         font-weight: normal;
+         text-align: left;
+         color: #000000;
+         font-size: 1em;
+         text-decoration: none;
+         font-style: normal;
+      }
+
+      p, ul, ol, li, div, td, th, address, nobr, b, i {
+         font-size: 10pt;
+         margin-top: 3pt;
+      }
+
+         p.beispiel {
+            font-style: italic;
+            font-weight: bold;
+         }
+
+      pre, tt {
+         font-family: Courier New,Courier;
+         font-size: 10pt;
+      }
+
+      td.capt1 {
+         font-style: italic;
+         text-align: center;
+         background-color: #ccccff;
+      }
+
+      td.head {
+         background-color: #cccccc;
+         font-weight: bold;
+         text-align: center;
+      }
+
+      td.prop {
+         color: #3333ff;
+      }
+
+      .funccapt {
+         border-top: 0.5mm solid #330099;
+         font-family: Courier New,Courier,monospace;
+         background-color: #ccffff;
+         color: #330099;
+         display: block;
+         padding-top: 3mm;
+         padding-bottom: 3mm;
+      }
+
+      .code {
+         border-style: solid;
+         border-width: 1pt;
+         padding: 1mm;
+         color: #993300;
+         margin-left: 5mm;
+         background-color: #fee7d0;
+      }
+
+      .code2 {
+         border-style: solid;
+         border-width: 1pt 3pt 3pt 1pt;
+         padding: 1mm;
+         color: #000099;
+         background-color: #ccccff;
+         margin-left: 10mm;
+         font-family: Courier New,Courier,monospace;
+      }
+
+      .speccaption1 {
+         border-width: 0;
+         padding: 1mm;
+         font-weight: bold;
+         background-color: #cccccc;
+      }
+
+      .funclist {
+         background-color: #ffffcc;
+      }
+   </style>
+</head>
+<body>
+
+   <h1>
+      GMTool</h1>
+   <p>
+      GMTool ist ein kleines, experimentelles Kommandozeilenprogramm mit dem GARMIN-Dateien bearbeitet werden können. Insbesondere ist die dahinterstehende Bibliothek GarminCore experimentell. Ich habe versucht, einen großen Teil der allgemein bekannten Informationen über GARMIN-Dateien zu integrieren. Dabei waren u. a. die Quelltexte von MKGMAP (<a href="http://www.mkgmap.org.uk">www.mkgmap.org.uk</a>) und die Informationen auf <a href="http://wiki.openstreetmap.org/wiki/DE:OSM_Map_On_Garmin/Format">http://wiki.openstreetmap.org/wiki/DE:OSM_Map_On_Garmin/Format</a> eine große Hilfe.</p>
+   <p>
+      Zum Aufteilen großer Polygone wird die &quot;Clipper Library&quot; von Angus Johnson (<a href="http://sourceforge.net/projects/polyclipping">http://sourceforge.net/projects/polyclipping</a>) verwendet.</p>
+   <p>
+      Als Programmiersprache wird C# verwendet. Das Programm sollte also sowohl unter Windows als auch unter Linux (Mono) laufen.</p>
+   <p>
+      Die gesamte Steuerung erfolgt über Optionen in der Kommandozeile. Die Bearbeitungsmöglichkeiten richten sich jeweils nach dem Dateityp, der ausschließlich über die Dateierweiterung erkannt wird.</p>
+   <p>
+      Die Eingabedatei wird mit der <strong>--input</strong> festgelegt. Diese Option kann auch mehrfach verwendet werden. Wird damit ein Verzeichnis angegeben, werden alle Dateien in diesem Verzeichnis und in den Unterverzeichnissen verwendet. Die Verwendung von Wildcards ist möglich, bezieht sich jedoch nur auf Dateien.</p>
+   <p>
+      Mit <strong>--inputlist</strong> kann eine einfache Textdatei angegeben werden, die in jeder Zeile einen Dateinamen enthalten kann.</p>
+   <p>
+      Mit <strong>--output</strong> kann eine Zieldatei oder ein Zielverzeichnis angegeben werden. </p>
+   <p>
+      Mit <strong>--overwrite</strong> (oder --overwrite=true) kann festgelegt werden, dass eine eventuell schon vorhandene Zieldatei überschrieben werden kann.</p>
+   <p>
+      Mit <strong>--info</strong> können Information zu einer Datei angezeigt werden. Für einige Dateitypen kann der Informationsumfang mit einem zusätzlichen Parameter (1 oder 2) erhöht werden.</p>
+   <p>
+      Mit <strong>--split</strong> wird eine IMG-Datei in die einzelnen Sub-Dateien aufgeteilt. Das Ziel sollte dann natürlich ein Verzeichnis sein. Wird zusätzlich der Parameter <strong>r</strong> angegeben, erfolgt die Aufteilung rekursiv, d.h. die in der IMG-Datei eventuell enthaltenen GMP- oder IMG-Dateien werden auch aufgeteilt. Das ist nützlich, wenn man z.B. eine Geräte-IMG-Datei aufteilen möchte. Mit dem zusätzlichen Parameter <strong>j</strong> werden zusammengehörende TRE-, LBL-, RGN-, NET-, NOD-, DEM- und MAR-Dateien wieder zu einer IMG-Datei verbunden. Beide Parameter dürfen zusammen verwendet werden.</p>
+   <p>
+      Mit <strong>--join</strong> verbindet man Dateien zu einer IMG- oder GMP-Datei.</p>
+   <p>
+      Mit <strong>--mapsource</strong> werden einige zusätzliche für die Programme Mapsource bzw. Basecamp erforderliche Dateien erzeugt. Diese Option kann mehrfach verwendet werden, wenn man zusätzliche Parameter übersichtlicher angeben will. Zusätzliche Parameter können aber auch zusammen als mit &#39;;&#39; getrennte Liste angegeben werden. I.A. werden alle nötigen Daten aus den vorhandenen Dateien &quot;zusammengesucht&quot;. Über Zusatzparameter können einige Daten aber auch expliziet vorgegeben werden. Zusatzparameter können sein:</p>
+   <ul>
+      <li><strong>pid:zahl</strong> Damit kann in den neuen Dateien eine andere Product-ID gesetzt werden.</li>
+      <li><strong>fid:zahl</strong> Damit kann in den neuen Dateien eine andere Family-ID gesetzt werden.</li>
+      <li><strong>cp:zahl</strong> Damit wird eine Codepage gesetzt.</li>
+      <li><strong>contour:bool</strong> Damit wird angegeben, ob Höhenlinien vorhanden sind oder nicht.</li>
+      <li><strong>hr:zahl</strong> Damit wird ein Wert für highestroutable (?) gesetzt. MKGMAP verwendet konstant 24.</li>
+      <li><strong>routable:zahl</strong> Die Karte ist routingfähig (1) oder nicht (0).</li>
+      <li><strong>points:typelist</strong> Damit wird eine mit &#39;,&#39; getrennte Liste der in der Overviewmap gewünschten Punkttypen (Standard 0x400, 0x600) geliefert.</li>
+      <li><strong>lines:typelist</strong> Damit wird eine mit &#39;,&#39; getrennte Liste der in der Overviewmap gewünschten Linientypen (Standard 0x100, 0x200, 0x300, 0x400, 0x1F00) geliefert.</li>
+      <li><strong>areas:typelist</strong> Damit wird eine mit &#39;,&#39; getrennte Liste der in der Overviewmap gewünschten Flächentypen (Standard 0x3200, 0x5000) geliefert.</li>
+      <li><strong>mindim:zahl</strong> Damit wird eine Mindestgröße der Umgrenzung von Linien und Flächen in der Overviewmap gesetzt (Standard 2). Der Wert bezieht sich auf die Größe in Rawunits, berechnet mit der Bitanzahl für die Koordinaten in der Overviewmap. Objekte mit dem Wert 0 werden intern schon ausgeschlossen. Auch 1 scheint für die Darstellung auf dem Bildschirm wenig sinnvoll zu sein. Es sind eher noch größere Grenzwerte sinnvoll.</li>
+      <li><strong>ov:name</strong> Dateiname der Overviewdatei (Standard: gmtool.img)</li>
+      <li><strong>typ:name</strong> Dateiname der TYP-Datei (Standard: gmtool.typ)</li>
+      <li><strong>tdb:name</strong> Dateiname der TDB-Datei (Standard: gmtool.tdb)</li>
+      <li><strong>mdx:name</strong> Dateiname der MDX-Datei (Standard: gmtool.mdx)</li>
+      <li><strong>mdr:name</strong> Dateiname der MDR-Datei (Standard: gmtool_mdr.img) (<strong>wird z.Z. noch nicht erzeugt</strong>)</li>
+   </ul>
+
+   <p>
+      Mit <strong>--analyzingtypes</strong> wird die Anzahl der Verwendung jedes Objekttyps für Punkte, Linien und Flächen ermittelt. Dafür werden die RGN-Dateien ausgewertet.</p>
+   <p>
+      Mit <strong>--pid:zahl</strong> wird die Product-ID in TYP-, MDX-, MPS- und TDB-Dateien gesetzt. Sie ist i.A. immer 1.</p>
+   <p>
+      Mit <strong>--fid:zahl</strong> wird die Family-ID in TYP-, MDX-, MPS- und TDB-Dateien gesetzt. Sie muss für alle Dateien einer Karte identisch sein.</p>
+
+   <p>
+      Mit <strong>--copyright</strong> wird das Copyright in einer TDB-Dateien gesetzt oder modifiziert. Sie kann mehrfach verwendet werden, da in der TDB-Datei mehrere Copyright-Segmente enthalten sein können. Es muss ein zusätzlicher Parameter angegeben werden, der min. 3 Zeichen lang sein muss. Das 1 Zeichen legt fest, ob es sich um eine SourceInformation (S) oder eine CopyrightInformation (C) handelt. Mit &#39;*&#39; bleibt eine die ursprüngliche Einstellung bestehen. Das 2 Zeichen legt die Anzeige fest: ob nur als Info (I) im Programm, beim Ausdrucken (P) oder immer (E). Mit &#39;*&#39; bleibt eine die ursprüngliche Einstellung bestehen. Das 3. Zeichen legt fest, ob ab 4. Stelle ein neuer Copyright-Text folgt (N), ob das Segment gelöscht wird (D) oder ob der Originaltext erhalten bleibt (*).</p>
+   <p>
+      Mit &quot;--copyright=*I*&quot; wird z.B. nur verhindert, dass das 1. Copyright-Segment auch auf dem Ausdruck erscheint.</p>
+   <p>
+      Mit <strong>--description</strong> wird der Beschreibungstext in IMG- und TDB-Dateien gesetzt.</p>
+   <p>
+      Mit <strong>--codepage</strong> wird die Codepage in TYP- und TDB-Dateien neu gesetzt. I.A. wird 1252 verwendet.</p>
+   <p>
+      Mit <strong>--priority</strong> wird die Anzeigepriorität in den TRE-Dateien neu gesetzt (Layer i.A. 0..25). Damit kann die Reihenfolge des Zeichnens auf GPS-Geräten beeinflußt werden.</p>
+   <p>
+      Mit <strong>--transparent</strong> wird die Transparenz gesetzt. Dafür müssen in den RGN-Dateien aber Flächen vom Typ 0x4B eingefügt oder entfernt werden. Deshalb funktioniert diese Funktion z.Z. nicht mit GMP-Dateien.</p>
+   <p>
+      Mit <strong>--mapfamilyname</strong> wird der Kartenname in TDB-Dateien neu gesetzt. Das ist der von Mapsource und Basecamp angezeigte Name.</p>
+   <p>
+      Mit <strong>--mapseriesname</strong> wird der Name der Kartenserie in TDB-Dateien neu gesetzt.</p>
+   <p>
+      Mit <strong>--version</strong> wird die Versionsnummer in TDB-Dateien (i.A. 100 für 1.00) neu gesetzt.</p>
+   <p>
+      Mit <strong>--routable</strong> wird die Routable-Eigenschaft in TDB-Dateien (i.A. 0 oder 1) neu gesetzt.</p>
+   <p>
+      Mit <strong>--hasdem</strong> wird die HasDEM-Eigenschaft in TDB-Dateien (i.A. 0 oder 1) neu gesetzt.</p>
+   <p>
+      Mit <strong>--hasprofile</strong> wird die HasProfile-Eigenschaft in TDB-Dateien (i.A. 0 oder 1) neu gesetzt.</p>
+   <p>
+      Mit <strong>--highestroutable</strong> wird die HighestRoutable-Eigenschaft in TDB-Dateien (z.B. 18) neu gesetzt.</p>
+   <p>
+      Noch ein allgemeiner Hinweis zu den Optionsangaben:</p>
+   <ul><li>Bei Zahlenangaben können i.A. Dezimalzahlen, Hexadezimalzahlen (z.B. 0x18), Dualzahlen (z.B. 0d1001) und Oktalzahlen (z.B. 0o17) verwendet werden.</li>
+      <li>Boolsche Werte können mit true, false, 0 oder 1 angegeben werden.</li>
+      <li>Jedes &#39;;&#39; im Parameter wird als Trennzeichen interpretiert. Ist das bei Textangaben nicht gewünscht muss &#39;\;&#39; angegeben werden.</li>
+      </ul>
+
+</body>
+</html>
