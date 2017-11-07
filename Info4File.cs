@@ -937,15 +937,15 @@ namespace GmTool {
             }
 
             for (int z = 0; z < dem.ZoomLevel.Count; z++) {
-               StdFile_DEM.ZoomlevelTableitem zl = dem.ZoomLevel[z].ZoomlevelItem;
+               GarminCore.Files.DEM.ZoomlevelTableitem zl = dem.ZoomLevel[z].ZoomlevelItem;
                Info_ShowInfoItem(firstlevel, "Datenbereich", (z + 1).ToString() + ", Level " + zl.No + ", SpecType " + zl.SpecType.ToString());
                Info_ShowInfoItem(firstlevel + 1, "Ecke links-oben", zl.West.ToString() + "° / " + zl.North.ToString() + "°");
                Info_ShowInfoItem(firstlevel + 1, "Höhenbereich", zl.MinHeight.ToString() + " .. " + (zl.MaxHeight).ToString());
                Info_ShowInfoItem(firstlevel + 1, "Kacheln", (zl.MaxIdxHoriz + 1).ToString() + " x " + (zl.MaxIdxVert + 1).ToString() + " = " + ((zl.MaxIdxHoriz + 1) * (zl.MaxIdxVert + 1)).ToString());
                Info_ShowInfoItem(firstlevel + 1, "Kachelgröße", zl.PointsHoriz.ToString() + " x " + zl.PointsVert.ToString() + " Pixel, " +
                                                                (zl.PointsHoriz * zl.PointDistanceHoriz).ToString() + "° / " + (zl.PointsVert * zl.PointDistanceVert).ToString() + "°");
-               Info_ShowInfoItem(firstlevel + 1, "Pixelgröße", StdFile_DEM.ZoomlevelTableitem.Degree2Unit(zl.PointDistanceHoriz).ToString() + " x " +
-                                                               StdFile_DEM.ZoomlevelTableitem.Degree2Unit(zl.PointDistanceVert).ToString() + ", " +
+               Info_ShowInfoItem(firstlevel + 1, "Pixelgröße", GarminCore.Files.DEM.ZoomlevelTableitem.Degree2Unit(zl.PointDistanceHoriz).ToString() + " x " +
+                                                               GarminCore.Files.DEM.ZoomlevelTableitem.Degree2Unit(zl.PointDistanceVert).ToString() + ", " +
                                                                zl.PointDistanceHoriz.ToString() + "° x " + zl.PointDistanceVert.ToString() + "°");
                Info_ShowInfoItem(firstlevel + 1, "Br letzte K.spalte", zl.LastColWidth + 1);
                Info_ShowInfoItem(firstlevel + 1, "Hö letzte K.zeile", zl.LastRowHeight + 1);
