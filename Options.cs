@@ -48,6 +48,7 @@ namespace GmTool {
          /// <summary>
          /// besonders ausführliche Info über die Inputdatei/en
          /// </summary>
+         ExtLongInfo,
          VeryLongInfo,
 
          /// <summary>
@@ -447,6 +448,7 @@ namespace GmTool {
                            switch (cmd.UnsignedIntegerValue((int)opt)) {
                               case 0: ToDo = ToDoType.Info; break;
                               case 1: ToDo = ToDoType.LongInfo; break;
+                              case 2: ToDo = ToDoType.ExtLongInfo; break;
                               default: ToDo = ToDoType.VeryLongInfo; break;
                            }
                         } else

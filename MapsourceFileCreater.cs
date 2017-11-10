@@ -366,7 +366,8 @@ namespace GmTool {
             }
             Console.WriteLine();
 
-            if (file == ovfile && tileinfo.Count > 0) {
+            if (file.ToUpper() == ovfile.ToUpper() &&
+                tileinfo.Count > 0) {
                ovmapnumber = tileinfo[tileinfo.Count - 1].MapNumber;
                ovmapid = tileinfo[tileinfo.Count - 1].MapID;
             }

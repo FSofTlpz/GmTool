@@ -67,10 +67,12 @@ namespace GmTool {
 
                case Options.ToDoType.Info:
                case Options.ToDoType.LongInfo:
+               case Options.ToDoType.ExtLongInfo:
                case Options.ToDoType.VeryLongInfo:
                   foreach (string file in InputFiles)
                      Info4File.Info(file, opt.ToDo == Options.ToDoType.Info ? 0 :
-                                          opt.ToDo == Options.ToDoType.LongInfo ? 1 : 2);
+                                          opt.ToDo == Options.ToDoType.LongInfo ? 1 :
+                                          opt.ToDo == Options.ToDoType.ExtLongInfo ? 2 : 3);
                   break;
 
                case Options.ToDoType.Split:
@@ -218,6 +220,9 @@ namespace GmTool {
                if (InputFiles[j].ToUpper() == txt)
                   InputFiles.RemoveAt(j--);
          }
+
+         for (int i = 0; i < InputFiles.Count; i++)
+            InputFiles[i] = Path.GetFullPath(InputFiles[i]);
 
          if (InputFiles.Count == 0)
             Console.Error.WriteLine("Keine Daten zur Verarbeitung angegeben.");
