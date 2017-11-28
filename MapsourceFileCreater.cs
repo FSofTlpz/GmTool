@@ -47,18 +47,27 @@ namespace GmTool {
       /// </summary>
       public class TileInfo {
 
+         /// <summary>
+         /// Karten-ID aus der TRE-Datei
+         /// </summary>
          public uint MapID;
+         /// <summary>
+         /// wird i.A. aus dem Basisnamen der TRE-Datei oder dem Namen des übergeordneten Verzeichnisses erzeugt
+         /// </summary>
          public uint MapNumber;
+         /// <summary>
+         /// i.A. Beschreibung der Karte aus der TRE-Datei
+         /// </summary>
          public string Description;
 
          /// <summary>
          /// Liste der Dateigrößen in Byte (zu den jeweiligen Dateinamen)
          /// </summary>
-         public List<UInt32> DataSize;
+         public List<UInt32> SubFileSize;
          /// <summary>
          /// Liste der zugehörigen Dateinamen
          /// </summary>
-         public List<string> Name;
+         public List<string> SubFileName;
 
          /// <summary>
          /// Begrenzung in Grad
@@ -73,8 +82,8 @@ namespace GmTool {
             Description = "";
             MapID = 0;
             MapNumber = 0;
-            DataSize = new List<uint>();
-            Name = new List<string>();
+            SubFileSize = new List<uint>();
+            SubFileName = new List<string>();
             North = South = 0;
             West = East = 0;
             HasCopyright = false;
@@ -85,7 +94,6 @@ namespace GmTool {
          }
 
       }
-
 
       /// <summary>
       /// erzeugt einige für Mapsource wichtige Dateien
@@ -109,6 +117,16 @@ namespace GmTool {
       /// <param name="nomdxfile">wenn true, keine MDX-Datei erzeugen</param>
       /// <param name="nomdrfile">wenn true, keine MDR-Datei erzeugen</param>
       /// <param name="noinstfiles">wenn true, keine Installations-Datei erzeugen</param>
+      /// <param name="tdb_productversion"></param>
+      /// <param name="tdb_routable"></param>
+      /// <param name="tdb_familyname"></param>
+      /// <param name="tdb_mapseriesname"></param>
+      /// <param name="tdb_description"></param>
+      /// <param name="tdb_highestroutable"></param>
+      /// <param name="tdb_hasdem"></param>
+      /// <param name="tdb_hasprofile"></param>
+      /// <param name="tdb_maxcoordbits4overview"></param>
+      /// <param name="copyrightsegments"></param>
       /// <param name="outputpath">Ausgabepfad</param>
       /// <param name="overwrite">true, wenn ev. schon vorhandene Dateien überschrieben werden können</param>
       static public void CreateFiles4Mapsource(List<string> infiles,
@@ -117,22 +135,16 @@ namespace GmTool {
                                                 SortedSet<int> ovpointtypes, SortedSet<int> ovlinetypes, SortedSet<int> ovareatypes,
                                                 string tdbfile, string ovfile, string typfile, string mdxfile, string mdrfile,
                                                 bool notdbfile, bool noovfile, bool notypfile, bool nomdxfile, bool nomdrfile, bool noinstfiles,
-
-
                                                 ushort tdb_productversion,
-                                                byte tdb_routable,
+                                                short tdb_routable,
                                                 string tdb_familyname,
                                                 string tdb_mapseriesname,
                                                 string tdb_description,
-                                                IList<File_TDB.SegmentedCopyright.Segment.CopyrightCodes> tdb_copyrightcodes,
-                                                IList<File_TDB.SegmentedCopyright.Segment.WhereCodes> tdb_copyrightwherecodes,
-                                                IList<string> tdb_copyrighttext,
-                                                byte tdb_highestroutable,
-                                                byte tdb_hasdem,
-                                                byte tdb_hasprofile,
-                                                byte tdb_maxcoordbits4overview,
-
-
+                                                short tdb_highestroutable,
+                                                short tdb_hasdem,
+                                                short tdb_hasprofile,
+                                                short tdb_maxcoordbits4overview,
+                                                List<File_TDB.SegmentedCopyright.Segment> copyrightsegments,
                                                 string outputpath, bool overwrite) {
          // wenn die Daten gesetzt sind, werden sie ev. auf einen gültigen Bereich eingegrenzt
          if (pid > 0)
@@ -196,18 +208,33 @@ namespace GmTool {
          //      }
 
          // wenn möglich/nötig, zusätzliche Infos ermitteln
-         uint ovmapnumber, ovmapid;
+         uint ovmapnumber = 0, ovmapid = 0;
          SortedSet<int> linetypes = new SortedSet<int>(),
                         areatypes = new SortedSet<int>(),
                         pointtypes = new SortedSet<int>();
          List<TileInfo> tileinfo = new List<TileInfo>();
+         string tdb_overviewdescription = "";
+         List<File_TDB.SegmentedCopyright.Segment> tdb_copyrightsegments = new List<File_TDB.SegmentedCopyright.Segment>();
+
          GetInfos(infiles,
                   ref pid, ref fid, ref codepage,
+                  ref tdb_productversion,
+                  ref tdb_familyname,
+                  ref tdb_mapseriesname,
+                  ref tdb_routable,
+                  ref tdb_highestroutable,
+                  ref tdb_hasprofile,
+                  ref tdb_hasdem,
+                  ref tdb_maxcoordbits4overview,
+                  ref tdb_description,
+                  ref tdb_copyrightsegments,
+                  ref tdb_overviewdescription,
                   ref ovfile, ref typfile, ref mdxfile, ref mdrfile,
                   out ovmapnumber, out ovmapid,
                   pointtypes, linetypes, areatypes, tileinfo);
          //throw new Exception("Es kann keine Product- und/oder Family-ID ermittelt werden.");
 
+         // ev. Overviewmp erzeugen
          if (!noovfile) {
             CreateOverviewmap(ovfile,
                               infiles,
@@ -220,37 +247,61 @@ namespace GmTool {
                               overwrite);
             // auch die Daten dieser neuen Overviewmap einsammeln
             int tmp_pid = 0, tmp_fid = 0, tmp_codepage = 0;
+
+            ushort tmp_productversion = 0;
+            string tmp_familyname = "";
+            string tmp_mapseriesname = "";
+            short tmp_routable = 0;
+            short tmp_highestroutable = 0;
+            short tmp_hasprofile = 0;
+            short tmp_hasdem = 0;
+            short tmp_maxcoordbits4overview = 0;
+            string tmp_mapdescription = "";
+            List<File_TDB.SegmentedCopyright.Segment> tmp_copyrightsegments = new List<File_TDB.SegmentedCopyright.Segment>();
+            string tmp_overviewdescription = "";
+
             string tmp_ovfile = "", tmp_typfile = "", tmp_mdxfile = "", tmp_mdrfile = "";
             uint tmp_ovmapnumber, tmp_ovmapid;
             SortedSet<int> tmp_linetyps = new SortedSet<int>(), tmp_polygontyps = new SortedSet<int>(), tmp_pointtyps = new SortedSet<int>();
             List<TileInfo> tmp_tileinfo = new List<TileInfo>();
             GetInfos(new string[] { ovfile },
-                     ref tmp_pid, ref tmp_fid, ref tmp_codepage,
+                     ref tmp_pid,
+                     ref tmp_fid,
+                     ref tmp_codepage,
+                     ref tmp_productversion,
+                     ref tmp_familyname,
+                     ref tmp_mapseriesname,
+                     ref tmp_routable,
+                     ref tmp_highestroutable,
+                     ref tmp_hasprofile,
+                     ref tmp_hasdem,
+                     ref tmp_maxcoordbits4overview,
+                     ref tmp_mapdescription,
+                     ref tmp_copyrightsegments,
+                     ref tmp_overviewdescription,
                      ref tmp_ovfile, ref tmp_typfile, ref tmp_mdxfile, ref tmp_mdrfile,
                      out tmp_ovmapnumber, out tmp_ovmapid,
                      tmp_linetyps, tmp_polygontyps, tmp_pointtyps, tmp_tileinfo);
             tileinfo.Add(tmp_tileinfo[0]);
          }
 
-         // MDX-Datei erzeugen
+         // ev. MDX-Datei erzeugen
          if (!nomdxfile)
             CreateMdxFile(mdxfile, (ushort)pid, (ushort)fid, tileinfo, overwrite);
 
-         // TDB-Datei erzeugen
+         // ev. TDB-Datei erzeugen
          if (!notdbfile)
             CreateTdbFile(tdbfile, pid, fid, codepage,
                           string.IsNullOrEmpty(tdb_familyname) ? fid.ToString() : tdb_familyname,
                           string.IsNullOrEmpty(tdb_mapseriesname) ? "GMTOOL-Series" : tdb_mapseriesname,
                           tdb_productversion,
-                          tdb_routable,
+                          (byte)tdb_routable,
                           string.IsNullOrEmpty(tdb_description) ? "GMTOOL-Karte" : tdb_description,
-                          tdb_copyrightcodes,
-                          tdb_copyrightwherecodes,
-                          tdb_copyrighttext,
-                          tdb_highestroutable,
-                          tdb_hasdem,
-                          tdb_hasprofile,
+                          (byte)tdb_highestroutable,
+                          (byte)tdb_hasdem,
+                          (byte)tdb_hasprofile,
                           tdb_maxcoordbits4overview,
+                          ReBuildTDBCopyright(copyrightsegments, tdb_copyrightsegments),
                           ovmapnumber,
                           tileinfo,
                           overwrite);
@@ -269,6 +320,41 @@ namespace GmTool {
 
       }
 
+      /// <summary>
+      /// erzeugt aus einer alten Copyright-Segment-Liste (<see cref="File_TDB.SegmentedCopyright.Segment"/>) und den gewünschten eine neue Liste
+      /// </summary>
+      /// <param name="optsegments"></param>
+      /// <param name="orgsegments"></param>
+      /// <returns></returns>
+      static List<File_TDB.SegmentedCopyright.Segment> ReBuildTDBCopyright(List<File_TDB.SegmentedCopyright.Segment> optsegments, IList<File_TDB.SegmentedCopyright.Segment> orgsegments) {
+         List<File_TDB.SegmentedCopyright.Segment> newsegments = new List<File_TDB.SegmentedCopyright.Segment>();
+
+         for (int i = 0; i < Math.Max(orgsegments.Count, optsegments.Count); i++) {
+            File_TDB.SegmentedCopyright.Segment segment = i < orgsegments.Count ?
+                                                                     new File_TDB.SegmentedCopyright.Segment(orgsegments[i]) :
+                                                                     new File_TDB.SegmentedCopyright.Segment(File_TDB.SegmentedCopyright.Segment.CopyrightCodes.CopyrightInformation,
+                                                                                                             File_TDB.SegmentedCopyright.Segment.WhereCodes.ProductInformationAndPrinting,
+                                                                                                             "");
+            if (i >= optsegments.Count) // altes Segment unverändert übernehmen
+               newsegments.Add(segment);
+            else {
+               if (optsegments[i].Copyright != null)  // Segment löschen
+                  continue;
+               else
+                  segment.Copyright = optsegments[i].Copyright;
+
+               if (optsegments[i].CopyrightCode != File_TDB.SegmentedCopyright.Segment.CopyrightCodes.Unknown)
+                  segment.CopyrightCode = optsegments[i].CopyrightCode;
+
+               if (optsegments[i].WhereCode != File_TDB.SegmentedCopyright.Segment.WhereCodes.Unknown)
+                  segment.WhereCode = optsegments[i].WhereCode;
+
+               newsegments.Add(segment);
+            }
+         }
+
+         return newsegments;
+      }
 
       #region Infos einsammeln
 
@@ -279,23 +365,56 @@ namespace GmTool {
       /// <param name="productid"></param>
       /// <param name="familyid"></param>
       /// <param name="codepage"></param>
+      /// <param name="productversion"></param>
+      /// <param name="familyname"></param>
+      /// <param name="mapseriesname"></param>
+      /// <param name="routable"></param>
+      /// <param name="highestroutable"></param>
+      /// <param name="hasprofile"></param>
+      /// <param name="hasdem"></param>
+      /// <param name="maxcoordbits4overview"></param>
+      /// <param name="mapdescription"></param>
+      /// <param name="copyrightsegments"></param>
+      /// <param name="overviewdescription"></param>
       /// <param name="ovfile"></param>
       /// <param name="typfile"></param>
       /// <param name="mdxfile"></param>
       /// <param name="mdrfile"></param>
       /// <param name="ovmapnumber"></param>
       /// <param name="ovmapid"></param>
+      /// <param name="pointtyps"></param>
       /// <param name="linetyps"></param>
       /// <param name="areatyps"></param>
-      /// <param name="pointtyps"></param>
       /// <param name="tileinfo"></param>
-      /// <returns>true, wenn ok</returns>
-      static bool GetInfos(IList<string> infiles, ref int productid, ref int familyid, ref int codepage,
-                           ref string ovfile, ref string typfile, ref string mdxfile, ref string mdrfile,
-                           out uint ovmapnumber, out uint ovmapid,
-                           SortedSet<int> pointtyps, SortedSet<int> linetyps, SortedSet<int> areatyps,
-                           List<TileInfo> tileinfo) {
+      /// <returns></returns>
+      static bool GetInfos(IList<string> infiles,
+                           ref int productid,
+                           ref int familyid,
+                           ref int codepage,
+                           ref ushort productversion,
+                           ref string familyname,
+                           ref string mapseriesname,
+                           ref short routable,
+                           ref short highestroutable,
+                           ref short hasprofile,
+                           ref short hasdem,
+                           ref short maxcoordbits4overview,
+                           ref string mapdescription,
+                           ref List<File_TDB.SegmentedCopyright.Segment> copyrightsegments,
+                           ref string overviewdescription,
+                           ref string ovfile,
+                           ref string typfile,
+                           ref string mdxfile,
+                           ref string mdrfile,
+                           out uint ovmapnumber,
+                           out uint ovmapid,
+                           SortedSet<int> pointtyps,
+                           SortedSet<int> linetyps,
+                           SortedSet<int> areatyps,
+                           List<TileInfo> alltileinfo) {
          ovmapnumber = ovmapid = 0;
+         List<TileInfo> tileinfotdb = new List<TileInfo>();
+         List<TileInfo> tileinforeal = new List<TileInfo>();
 
          foreach (string file in infiles) {
             Console.Write("untersuche Datei " + file + " ...");
@@ -341,23 +460,58 @@ namespace GmTool {
             } else if (ext == ".TRE") {
 
                using (BinaryReaderWriter brw = new BinaryReaderWriter(file, true)) {
-                  GetInfosFromTRE(brw, null, file, pointtyps, linetyps, areatyps, tileinfo);
+                  GetInfosFromTRE(brw, null, file, pointtyps, linetyps, areatyps, tileinforeal);
                   brw.Dispose();
                }
 
             } else if (ext == ".GMP") {
 
                using (BinaryReaderWriter brw = new BinaryReaderWriter(file, true)) {
-                  GetInfosFromGMP(brw, file, ref codepage, pointtyps, linetyps, areatyps, tileinfo);
+                  GetInfosFromGMP(brw, file, ref codepage, pointtyps, linetyps, areatyps, tileinforeal);
                   brw.Dispose();
                }
 
             } else if (ext == ".IMG") {
 
                using (BinaryReaderWriter br = new BinaryReaderWriter(file, true)) {
-                  GetInfosFromIMG(br, ref productid, ref familyid, ref codepage, pointtyps, linetyps, areatyps, tileinfo);
+                  GetInfosFromIMG(br, ref productid, ref familyid, ref codepage, pointtyps, linetyps, areatyps, tileinforeal);
                   br.Dispose();
                }
+
+            } else if (ext == ".TDB") {
+
+               using (BinaryReaderWriter br = new BinaryReaderWriter(file, true)) {
+                  GetInfosFromTDB(br,
+                                    ref productid,
+                                    ref familyid,
+                                    ref productversion,
+                                    ref codepage,
+                                    ref familyname,
+                                    ref mapseriesname,
+                                    ref routable,
+                                    ref highestroutable,
+                                    ref hasprofile,
+                                    ref hasdem,
+                                    ref maxcoordbits4overview,
+                                    ref mapdescription,
+                                    ref copyrightsegments,
+                                    ref ovmapnumber,
+                                    tileinfotdb);
+                  ovmapid = ovmapnumber;
+                  br.Dispose();
+
+               }
+
+               //} else if (ext == ".RGN") {
+
+
+               //TileInfo ti = tileinfo[tileinfo.Count - 1];
+               //foreach (string tilefile in sf.AllFilenames4Basename(basename)) {
+               //   ti.SubFileSize.Add(sf.Filesize(sf.FilenameIdx(tilefile)));
+               //   ti.SubFileName.Add(tilefile);
+               //}
+
+
 
             } else {
 
@@ -366,18 +520,42 @@ namespace GmTool {
             }
             Console.WriteLine();
 
-            if (file.ToUpper() == ovfile.ToUpper() &&
-                tileinfo.Count > 0) {
-               ovmapnumber = tileinfo[tileinfo.Count - 1].MapNumber;
-               ovmapid = tileinfo[tileinfo.Count - 1].MapID;
+            if (ovmapnumber <= 0 &&
+                file.ToUpper() == ovfile.ToUpper() &&
+                tileinforeal.Count > 0) {
+               ovmapnumber = tileinforeal[tileinforeal.Count - 1].MapNumber;
+               ovmapid = tileinforeal[tileinforeal.Count - 1].MapID;
             }
 
          }
 
+         // tdbtileinfo und tileinfo zu alltileinfo integrieren; TDB-Beschreibung hat Vorrang
+         for (int i = tileinfotdb.Count - 1; i >= 0; i--) {
+            TileInfo titdb = tileinfotdb[i];
+            bool found = false;
+            for (int j = 0; j < tileinforeal.Count; j++) {
+               TileInfo tireal = tileinforeal[j];
+               if (tireal.MapNumber == titdb.MapNumber) {    // passendes ti gefunden
+                  if (titdb.Description != "")
+                     tireal.Description = titdb.Description;
+                  tileinforeal.Remove(tireal);
+                  tileinfotdb.Remove(titdb);
+                  alltileinfo.Add(tireal);
+                  found = true;
+                  break;
+               }
+            }
+            if (!found) // keine realen Infos zur TDB gefunden
+               tileinfotdb.Remove(titdb);
+         }
+
+         alltileinfo.Reverse();
+         alltileinfo.AddRange(tileinforeal);
+
          // falls keine bestehende Overview-Karte gefunden wurde:
          if (ovmapnumber == 0 ||
              ovmapid == 0) {
-            foreach (TileInfo ti in tileinfo) {
+            foreach (TileInfo ti in tileinforeal) {
                ovmapnumber = Math.Max(ovmapnumber, ti.MapNumber);
                ovmapid = Math.Max(ovmapid, ti.MapID);
             }
@@ -391,6 +569,88 @@ namespace GmTool {
 
          return productid > 0 &&
                 familyid > 0;
+      }
+
+      static void GetInfosFromTDB(BinaryReaderWriter brw,
+                                  ref int productid,
+                                  ref int familyid,
+                                  ref ushort productversion,
+                                  ref int codepage,
+                                  ref string familyname,
+                                  ref string seriesname,
+                                  ref short routable,
+                                  ref short maxroutingtype,
+                                  ref short contour,
+                                  ref short dem,
+                                  ref short maxcoordbits4overview,
+                                  ref string mapdescription,
+                                  ref List<File_TDB.SegmentedCopyright.Segment> copyrightsegments,
+                                  ref uint overviewmapno,
+                                  List<TileInfo> tileinfo) {
+
+         File_TDB tdb = new File_TDB();
+         tdb.Read(brw);
+
+         if (productid < 0)
+            productid = tdb.Head.ProductID;
+         if (familyid < 0)
+            familyid = tdb.Head.FamilyID;
+         if (productversion < 0)
+            productversion = tdb.Head.ProductVersion;
+         if (codepage < 0)
+            codepage = (int)tdb.Head.CodePage;
+         if (string.IsNullOrEmpty(familyname))
+            familyname = tdb.Head.MapFamilyName;
+         if (string.IsNullOrEmpty(seriesname))
+            seriesname = tdb.Head.MapSeriesName;
+         if (routable < 0)
+            routable = tdb.Head.Routable;
+         if (maxroutingtype < 0)
+            maxroutingtype = tdb.Head.HighestRoutable;
+         if (contour < 0)
+            contour = tdb.Head.HasProfileInformation;
+         if (dem < 0)
+            dem = tdb.Head.HasDEM;
+         if (maxcoordbits4overview < 0)
+            maxcoordbits4overview = tdb.Head.MaxCoordbits4Overview;
+         mapdescription = tdb.Mapdescription.Text;
+         copyrightsegments = tdb.Copyright.Segments;
+         overviewmapno = tdb.Overviewmap.Mapnumber;
+
+         if (tdb.Overviewmap.Mapnumber > 0) {
+            TileInfo ti = new TileInfo();
+            ti.East.ValueDegree = tdb.Overviewmap.East;
+            ti.North.ValueDegree = tdb.Overviewmap.North;
+            ti.South.ValueDegree = tdb.Overviewmap.South;
+            ti.West.ValueDegree = tdb.Overviewmap.West;
+            ti.Description = tdb.Overviewmap.Description;
+            ti.MapNumber = tdb.Overviewmap.Mapnumber;
+
+            tileinfo.Add(ti);
+         }
+
+         for (int i = 0; i < tdb.Tilemap.Count; i++) {
+            TileInfo ti = new TileInfo();
+
+            ti.East.ValueDegree = tdb.Tilemap[i].East;
+            ti.North.ValueDegree = tdb.Tilemap[i].North;
+            ti.South.ValueDegree = tdb.Tilemap[i].South;
+            ti.West.ValueDegree = tdb.Tilemap[i].West;
+
+            ti.MapNumber = tdb.Tilemap[i].Mapnumber;
+            ti.HasCopyright = tdb.Tilemap[i].HasCopyright > 0;
+            //tdb.Tilemap[i].ParentMapnumber -> tdb.Overviewmap.Mapnumber
+            //ti.MapID -> TRE
+
+            ti.Description = tdb.Tilemap[i].Description;
+            for (int j = 0; j < tdb.Tilemap[i].Name.Count; j++)
+               ti.SubFileName.Add(tdb.Tilemap[i].Name[j]);
+            for (int j = 0; j < tdb.Tilemap[i].DataSize.Count; j++)
+               ti.SubFileSize.Add(tdb.Tilemap[i].DataSize[j]);
+
+            tileinfo.Add(ti);
+         }
+
       }
 
       static void GetInfosFromMPS(BinaryReaderWriter brw, ref int productid, ref int familyid) {
@@ -432,18 +692,26 @@ namespace GmTool {
             TileInfo ti = new TileInfo();
             SetTileInfoDataFromTre(ti, tre);
             try {
+               string name = "";
                if (directory != "")
-                  ti.MapNumber = Convert.ToUInt32(directory);
-               else
-                  ti.MapNumber = Convert.ToUInt32(basename);
+                  name = Path.GetFileName(directory);
+               for (int i = 0; i < name.Length; i++)
+                  if (!char.IsDigit(name[i])) {
+                     name = "";
+                     break;
+                  }
+               if (name == "")
+                  name = basename;
+               ti.MapNumber = Convert.ToUInt32(name);
+
             } catch {
                Console.Error.WriteLine("Die MapNumber für '" + trefile + "' kann nicht ermittelt werden.");
             }
             if (directory != "")
                foreach (string tilefile in TheJob.AllFilenames4Basename(directory, basename)) {
                   FileInfo fi = new FileInfo(tilefile);
-                  ti.DataSize.Add((uint)fi.Length);
-                  ti.Name.Add(Path.GetFileName(tilefile));
+                  ti.SubFileSize.Add((uint)fi.Length);
+                  ti.SubFileName.Add(Path.GetFileName(tilefile));
                }
             tileinfo.Add(ti);
          }
@@ -488,8 +756,8 @@ namespace GmTool {
          if (gmp.TRE != null) {
             GetInfosFromTRE(brw4gmp, gmp.TRE, basename + ".TRE", pointtyps, linetyps, areatyps, tileinfo);
             TileInfo ti = tileinfo[tileinfo.Count - 1];
-            ti.DataSize.Add((uint)brw4gmp.Length);    // nur die GMP-Datei
-            ti.Name.Add(Path.GetFileName(gmpfile));
+            ti.SubFileSize.Add((uint)brw4gmp.Length);    // nur die GMP-Datei
+            ti.SubFileName.Add(Path.GetFileName(gmpfile));
          }
 
       }
@@ -527,8 +795,8 @@ namespace GmTool {
                }
                TileInfo ti = tileinfo[tileinfo.Count - 1];
                foreach (string tilefile in sf.AllFilenames4Basename(basename)) {
-                  ti.DataSize.Add(sf.Filesize(sf.FilenameIdx(tilefile)));
-                  ti.Name.Add(tilefile);
+                  ti.SubFileSize.Add(sf.Filesize(sf.FilenameIdx(tilefile)));
+                  ti.SubFileName.Add(tilefile);
                }
                if (string.IsNullOrEmpty(ti.Description))
                   ti.Description = sf.ImgHeader.Description;
@@ -604,7 +872,7 @@ namespace GmTool {
       static void MergeMap(DetailMap samplemap, SimpleTileMap newsm,
                            List<Bound> sourcebound, List<int> sourcemapid,
                            int mindimension,
-                           ref byte maxbits4overview, ref int layer,
+                           ref short maxbits4overview, ref int layer,
                            SortedSet<int> pointtypes, SortedSet<int> linetypes, SortedSet<int> areatypes) {
          sourcebound.Add(newsm.MapBounds);
          sourcemapid.Add((int)newsm.MapID);
@@ -699,7 +967,7 @@ namespace GmTool {
       /// <param name="areatypes">Liste der gewünschten Flächen-Typen</param>
       /// <param name="overwrite">wenn true, wird eine schon bestehende IMG-Datei überschrieben</param>
       /// <returns>Name der IMG- oder TRE-Datei wenn erfolgreich</returns>
-      public static string CreateOverviewmap(string overviewimgorpath, List<string> infiles, uint mapid, int mindimension, ref byte maxbits4overview,
+      public static string CreateOverviewmap(string overviewimgorpath, List<string> infiles, uint mapid, int mindimension, ref short maxbits4overview,
                                              SortedSet<int> pointtypes, SortedSet<int> linetypes, SortedSet<int> areatypes,
                                              bool overwrite) {
          if (string.IsNullOrEmpty(overviewimgorpath)) {
@@ -911,7 +1179,6 @@ namespace GmTool {
 #endif
       }
 
-
       /// <summary>
       /// erzeugt eine TDB-Datei
       /// </summary>
@@ -924,13 +1191,11 @@ namespace GmTool {
       /// <param name="productversion"></param>
       /// <param name="routable"></param>
       /// <param name="description"></param>
-      /// <param name="copyrightcodes"></param>
-      /// <param name="copyrightwherecodes"></param>
-      /// <param name="copyrighttext"></param>
       /// <param name="highestroutable"></param>
       /// <param name="hasdem"></param>
       /// <param name="hasprofile"></param>
       /// <param name="maxbits4overview">max. Bitanzahl für die Overviewmap</param>
+      /// <param name="copyrightsegments"></param>
       /// <param name="overviewmapnumber">Karten-ID der Overviewmap (notfalls die größte vorhandene ID)</param>
       /// <param name="tileinfo">Infos je Kartenkachel und für die Overviewmap</param>
       /// <param name="overwrite">wenn true, wird eine ev. schon vorhande Datei überschrieben</param>
@@ -942,13 +1207,11 @@ namespace GmTool {
                                        ushort productversion,
                                        byte routable,
                                        string description,
-                                       IList<File_TDB.SegmentedCopyright.Segment.CopyrightCodes> copyrightcodes,
-                                       IList<File_TDB.SegmentedCopyright.Segment.WhereCodes> copyrightwherecodes,
-                                       IList<string> copyrighttext,
                                        byte highestroutable,
                                        byte hasdem,
                                        byte hasprofile,
                                        int maxbits4overview,
+                                       IList<File_TDB.SegmentedCopyright.Segment> copyrightsegments,
                                        uint overviewmapnumber,
                                        List<TileInfo> tileinfo,
                                        bool overwrite) {
@@ -1002,17 +1265,13 @@ namespace GmTool {
          tdb.Head.HasDEM = hasdem;
          tdb.Mapdescription = new File_TDB.Description(new File_TDB.BlockHeader(File_TDB.BlockHeader.Typ.Description));
          tdb.Mapdescription.Text = description;
-         if (copyrighttext.Count > 0) {
-            for (int i = 0; i < copyrighttext.Count; i++)
-               tdb.Copyright.Segments.Add(new File_TDB.SegmentedCopyright.Segment(
-                              i < copyrightcodes.Count ? copyrightcodes[i] : File_TDB.SegmentedCopyright.Segment.CopyrightCodes.CopyrightInformation,
-                              i < copyrightwherecodes.Count ? copyrightwherecodes[i] : File_TDB.SegmentedCopyright.Segment.WhereCodes.ProductInformationAndPrinting,
-                              copyrighttext[i]));
-         } else {
+         if (copyrightsegments.Count == 0)
             tdb.Copyright.Segments.Add(new File_TDB.SegmentedCopyright.Segment(File_TDB.SegmentedCopyright.Segment.CopyrightCodes.CopyrightInformation,
                                                                                File_TDB.SegmentedCopyright.Segment.WhereCodes.ProductInformationAndPrinting,
                                                                                "created by gmtool"));
-         }
+         else
+            for (int i = 0; i < copyrightsegments.Count; i++)
+               tdb.Copyright.Segments.Add(new File_TDB.SegmentedCopyright.Segment(copyrightsegments[i]));
 
          Console.WriteLine("CodePage " + tdb.Head.CodePage.ToString());
          Console.WriteLine("FamilyID " + tdb.Head.FamilyID.ToString());
@@ -1033,9 +1292,9 @@ namespace GmTool {
          foreach (TileInfo ti in tileinfo) {
             if (ti.MapID != overviewmapnumber) {
                File_TDB.TileMap tilemap = new File_TDB.TileMap(new File_TDB.BlockHeader(File_TDB.BlockHeader.Typ.Tilemap));
-               for (int i = 0; i < ti.Name.Count; i++) {
-                  tilemap.Name.Add(ti.Name[i]);
-                  tilemap.DataSize.Add(ti.DataSize[i]);
+               for (int i = 0; i < ti.SubFileName.Count; i++) {
+                  tilemap.Name.Add(ti.SubFileName[i]);
+                  tilemap.DataSize.Add(ti.SubFileSize[i]);
                }
                tilemap.Mapnumber = ti.MapID;
                tilemap.ParentMapnumber = overviewmapnumber;

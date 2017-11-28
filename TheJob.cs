@@ -103,10 +103,6 @@ namespace GmTool {
 
                case Options.ToDoType.CreateFiles4Mapsource:
                   if (PrepareOutputData()) {
-                     List<File_TDB.SegmentedCopyright.Segment.CopyrightCodes> CopyrightCodes = new List<File_TDB.SegmentedCopyright.Segment.CopyrightCodes>();
-                     List<File_TDB.SegmentedCopyright.Segment.WhereCodes> CopyrightWhereCodes = new List<File_TDB.SegmentedCopyright.Segment.WhereCodes>();
-                     List<string> CopyrightText = new List<string>();
-
                      MapsourceFileCreater.CreateFiles4Mapsource(InputFiles,
                                                                opt.PID.IsSet ? (int)opt.PID.ValueAsUInt : -1,
                                                                opt.FID.IsSet ? (int)opt.FID.ValueAsUInt : -1,
@@ -146,15 +142,15 @@ namespace GmTool {
                                                                opt.MapsourceNoInstfiles.IsSet ? opt.MapsourceNoInstfiles.ValueAsBool : false,
 
                                                                opt.Version.IsSet ? (ushort)opt.Version.ValueAsInt : (ushort)100,
-                                                               opt.Routable.IsSet ? (byte)opt.Routable.ValueAsInt : (byte)0,
+                                                               opt.Routable.IsSet ? (byte)opt.Routable.ValueAsInt : (short)-1,
                                                                opt.MapFamilyName.IsSet ? opt.MapFamilyName.ValueAsString : null,
                                                                opt.MapSeriesName.IsSet ? opt.MapSeriesName.ValueAsString : null,
                                                                opt.Description.IsSet ? opt.Description.ValueAsString : null,
-                                                               CopyrightCodes, CopyrightWhereCodes, CopyrightText,
-                                                               opt.HighestRoutable.IsSet ? (byte)(opt.HighestRoutable.ValueAsInt & 0xFF) : (byte)0,
-                                                               opt.HasDEM.IsSet ? (byte)(opt.HasDEM.ValueAsInt & 0xFF) : (byte)0,
-                                                               opt.HasProfile.IsSet ? (byte)(opt.HasProfile.ValueAsInt & 0xFF) : (byte)0,
-                                                               opt.MaxCoordBits4Overview.IsSet ? (byte)(opt.MaxCoordBits4Overview.ValueAsInt & 0xFF) : (byte)0,
+                                                               opt.HighestRoutable.IsSet ? (byte)(opt.HighestRoutable.ValueAsInt & 0xFF) : (short)-1,
+                                                               opt.HasDEM.IsSet ? (byte)(opt.HasDEM.ValueAsInt & 0xFF) : (short)-1,
+                                                               opt.HasProfile.IsSet ? (byte)(opt.HasProfile.ValueAsInt & 0xFF) : (short)-1,
+                                                               opt.MaxCoordBits4Overview.IsSet ? (byte)(opt.MaxCoordBits4Overview.ValueAsInt & 0xFF) : (short)-1,
+                                                               Option2TDBCopyrightList(opt),
 
                                                                Output,
                                                                opt.OutputOverwrite);
@@ -181,6 +177,7 @@ namespace GmTool {
       /// <para>Wildcards im Dateinamen (NICHT Pfad) werden ausgewertet.</para>
       /// <para>Mehrfach angegebene Dateien werden entfernt.</para>
       /// <para>Es werden die vollständigen Dateipfade ergänzt.</para>
+      /// <para>Die Reihenfolge der Dateinamen bleibt erhalten.</para>
       /// </summary>
       /// <returns>true, wenn min. 1 Datei angegeben ist</returns>
       bool PrepareInputData(bool withsubdirs) {
@@ -613,6 +610,81 @@ namespace GmTool {
          return fordevice;
       }
 
+      /// <summary>
+      /// erzeugt aus einer alten Copyright-Segment-Liste (<see cref="File_TDB.SegmentedCopyright.Segment"/>) und den ev. vorhandenen Optionen eine neue Liste
+      /// </summary>
+      /// <param name="opt"></param>
+      /// <param name="orgsegments"></param>
+      /// <returns></returns>
+      List<File_TDB.SegmentedCopyright.Segment> ReBuildTDBCopyright(Options opt, IList<File_TDB.SegmentedCopyright.Segment> orgsegments) {
+         List<File_TDB.SegmentedCopyright.Segment> newsegments = new List<File_TDB.SegmentedCopyright.Segment>();
+         List<File_TDB.SegmentedCopyright.Segment> optsegments = Option2TDBCopyrightList(opt);
+
+         for (int i = 0; i < Math.Max(orgsegments.Count, opt.TDBCopyrightText.Count); i++) {
+            File_TDB.SegmentedCopyright.Segment segment = i < orgsegments.Count ?
+                                                                     new File_TDB.SegmentedCopyright.Segment(orgsegments[i]) :
+                                                                     new File_TDB.SegmentedCopyright.Segment(File_TDB.SegmentedCopyright.Segment.CopyrightCodes.CopyrightInformation,
+                                                                                                             File_TDB.SegmentedCopyright.Segment.WhereCodes.ProductInformationAndPrinting,
+                                                                                                             "");
+            if (i >= optsegments.Count) // altes Segment unverändert übernehmen
+               newsegments.Add(segment);
+            else {
+               if (optsegments[i].Copyright != null)  // Segment löschen
+                  continue;
+               else
+                  segment.Copyright = optsegments[i].Copyright;
+
+               if (optsegments[i].CopyrightCode != File_TDB.SegmentedCopyright.Segment.CopyrightCodes.Unknown)
+                  segment.CopyrightCode = optsegments[i].CopyrightCode;
+
+               if (optsegments[i].WhereCode != File_TDB.SegmentedCopyright.Segment.WhereCodes.Unknown)
+                  segment.WhereCode = optsegments[i].WhereCode;
+
+               newsegments.Add(segment);
+            }
+         }
+
+         return newsegments;
+      }
+
+      /// <summary>
+      /// erzeugt aus den Optionen eine Copyright-Segment-Liste (<see cref="File_TDB.SegmentedCopyright.Segment"/>) 
+      /// <para>Ist der Copyright-Text eines Segmentes null, soll dieses Segment gelöscht werden.</para>
+      /// </summary>
+      /// <param name="opt"></param>
+      /// <returns></returns>
+      List<File_TDB.SegmentedCopyright.Segment> Option2TDBCopyrightList(Options opt) {
+         List<File_TDB.SegmentedCopyright.Segment> newsegments = new List<File_TDB.SegmentedCopyright.Segment>();
+
+         for (int i = 0; i < opt.TDBCopyrightText.Count && i < opt.TDBCopyrightCodes.Count && i < opt.TDBCopyrightWhereCodes.Count; i++) {
+
+            File_TDB.SegmentedCopyright.Segment segment = new File_TDB.SegmentedCopyright.Segment(File_TDB.SegmentedCopyright.Segment.CopyrightCodes.CopyrightInformation,
+                                                                                                  File_TDB.SegmentedCopyright.Segment.WhereCodes.ProductInformationAndPrinting,
+                                                                                                  "");
+
+            if (opt.TDBCopyrightText[i].Value == null) {
+               if (!opt.TDBCopyrightText[i].IsSet) {
+                  segment.Copyright = null;  // Kennung für "Segment löschen"
+               }
+            } else
+               segment.Copyright = opt.TDBCopyrightText[i].ValueAsString;
+
+            File_TDB.SegmentedCopyright.Segment.CopyrightCodes ccode = (File_TDB.SegmentedCopyright.Segment.CopyrightCodes)opt.TDBCopyrightCodes[i].ValueAsInt;
+            if (ccode != File_TDB.SegmentedCopyright.Segment.CopyrightCodes.Unknown)
+               segment.CopyrightCode = ccode;
+
+            File_TDB.SegmentedCopyright.Segment.WhereCodes wcode = (File_TDB.SegmentedCopyright.Segment.WhereCodes)opt.TDBCopyrightWhereCodes[i].ValueAsInt;
+            if (wcode != File_TDB.SegmentedCopyright.Segment.WhereCodes.Unknown)
+               segment.WhereCode = wcode;
+
+            newsegments.Add(segment);
+         }
+
+         return newsegments;
+      }
+
+
+
       #region Änderung von Eigenschaften
 
       /// <summary>
@@ -813,37 +885,8 @@ namespace GmTool {
             if (opt.MaxCoordBits4Overview.IsSet)
                file.Head.MaxCoordbits4Overview = (byte)(opt.MaxCoordBits4Overview.ValueAsInt & 0xFF);
 
-            if (opt.TDBCopyrightText.Count > 0) {
-               List<File_TDB.SegmentedCopyright.Segment> newsegments = new List<File_TDB.SegmentedCopyright.Segment>();
-
-               for (int i = 0; i < Math.Max(file.Copyright.Segments.Count, opt.TDBCopyrightText.Count); i++) {
-                  File_TDB.SegmentedCopyright.Segment segment = i < file.Copyright.Segments.Count ?
-                                                                           new File_TDB.SegmentedCopyright.Segment(file.Copyright.Segments[i]) :
-                                                                           new File_TDB.SegmentedCopyright.Segment(File_TDB.SegmentedCopyright.Segment.CopyrightCodes.CopyrightInformation,
-                                                                                                                   File_TDB.SegmentedCopyright.Segment.WhereCodes.ProductInformationAndPrinting,
-                                                                                                                   "");
-                  if (i >= opt.TDBCopyrightText.Count) // altes Segment unverändert übernehmen
-                     newsegments.Add(segment);
-                  else {
-                     if (opt.TDBCopyrightText[i].Value == null) {
-                        if (!opt.TDBCopyrightText[i].IsSet) // Segment löschen
-                           continue;
-                     } else
-                        segment.Copyright = opt.TDBCopyrightText[i].ValueAsString;
-
-                     File_TDB.SegmentedCopyright.Segment.CopyrightCodes ccode = (File_TDB.SegmentedCopyright.Segment.CopyrightCodes)opt.TDBCopyrightCodes[i].ValueAsInt;
-                     if (ccode != File_TDB.SegmentedCopyright.Segment.CopyrightCodes.Unknown)
-                        segment.CopyrightCode = ccode;
-
-                     File_TDB.SegmentedCopyright.Segment.WhereCodes wcode = (File_TDB.SegmentedCopyright.Segment.WhereCodes)opt.TDBCopyrightWhereCodes[i].ValueAsInt;
-                     if (wcode != File_TDB.SegmentedCopyright.Segment.WhereCodes.Unknown)
-                        segment.WhereCode = wcode;
-
-                     newsegments.Add(segment);
-                  }
-               }
-               file.Copyright.Segments = newsegments;
-            }
+            if (opt.TDBCopyrightText.Count > 0)
+               file.Copyright.Segments = ReBuildTDBCopyright(opt, file.Copyright.Segments);
 
             Console.WriteLine("erzeuge Datei '" + destfile + "'");
             using (BinaryReaderWriter bw = new BinaryReaderWriter(destfile, false, true, true)) {

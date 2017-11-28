@@ -4,6 +4,7 @@
 [Bb]ackup/
 *.zip
 MiniMap/
+*.txt
 
 # User-specific files
 *.suo
