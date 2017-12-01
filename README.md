@@ -46,9 +46,9 @@ There is no way to find the overviewmap automaticly. Because we set the name wit
 create a new TDB new.tdb with infos from files in the directory and an old.tdb and additional setting of DEM-Property:
 
       REM for a lot of IMG's with TDB:
-      gmtool -i old.tdb -i . --mapsource=new.tdb;noov;notyp;nomdx;nomdr;noinst --hasdem=1 -o . --overwrite
+      gmtool -i old.tdb -i . --mapsource=tdb:new.tdb;noov;notyp;nomdx;nomdr;noinst --hasdem=1 -o . --overwrite
    
       REM for gmap-style maps with TDB in the Product1-directory:
-      gmtool -i old.tdb -i . --withsubdirs --mapsource=new.tdb;noov;notyp;nomdx;nomdr;noinst --hasdem=1 -o . --overwrite
+      gmtool -i old.tdb -i . --withsubdirs --mapsource=tdb:new.tdb;noov;notyp;nomdx;nomdr;noinst --hasdem=1 -o . --overwrite
       
    
