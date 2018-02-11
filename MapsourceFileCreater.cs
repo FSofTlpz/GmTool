@@ -72,8 +72,10 @@ namespace GmTool {
          /// <summary>
          /// Begrenzung in Grad
          /// </summary>
-         public Longitude West, East;
-         public Latitude South, North;
+         public Longitude West;
+         public Longitude East;
+         public Latitude South;
+         public Latitude North;
 
          public bool HasCopyright;
 
@@ -84,9 +86,37 @@ namespace GmTool {
             MapNumber = 0;
             SubFileSize = new List<uint>();
             SubFileName = new List<string>();
-            North = South = 0;
-            West = East = 0;
+            North = new Latitude(0);
+            South = new Latitude(0);
+            West = new Longitude(0);
+            East = new Longitude(0);
             HasCopyright = false;
+         }
+
+         public TileInfo(TileInfo ti) : this() {
+            Description = ti.Description;
+            MapID = ti.MapID;
+            MapNumber = ti.MapNumber;
+            SubFileSize = new List<uint>(ti.SubFileSize);
+            SubFileName = new List<string>(ti.SubFileName);
+            North = new Latitude(ti.North);
+            South = new Latitude(ti.South);
+            West = new Longitude(ti.West);
+            East = new Longitude(ti.East);
+            HasCopyright = ti.HasCopyright;
+         }
+
+         public TileInfo(File_TDB.TileMap tm) : this() {
+            Description = tm.Description;
+            MapID = tm.Mapnumber;
+            MapNumber = tm.Mapnumber;
+            SubFileSize = new List<uint>(tm.DataSize);
+            SubFileName = new List<string>(tm.Name);
+            North = new Latitude(tm.North);
+            South = new Latitude(tm.South);
+            West = new Longitude(tm.West);
+            East = new Longitude(tm.East);
+            HasCopyright = tm.HasCopyright != 0;
          }
 
          public override string ToString() {
@@ -595,7 +625,7 @@ namespace GmTool {
             productid = tdb.Head.ProductID;
          if (familyid < 0)
             familyid = tdb.Head.FamilyID;
-         if (productversion < 0)
+         if (productversion <= 0)
             productversion = tdb.Head.ProductVersion;
          if (codepage < 0)
             codepage = (int)tdb.Head.CodePage;
@@ -617,7 +647,7 @@ namespace GmTool {
          copyrightsegments = tdb.Copyright.Segments;
          overviewmapno = tdb.Overviewmap.Mapnumber;
 
-         if (tdb.Overviewmap.Mapnumber > 0) {
+         if (tdb.Overviewmap.Mapnumber > 0) {                  // wenn vorhanden, dann das 1. Tile
             TileInfo ti = new TileInfo();
             ti.East.ValueDegree = tdb.Overviewmap.East;
             ti.North.ValueDegree = tdb.Overviewmap.North;
@@ -625,31 +655,13 @@ namespace GmTool {
             ti.West.ValueDegree = tdb.Overviewmap.West;
             ti.Description = tdb.Overviewmap.Description;
             ti.MapNumber = tdb.Overviewmap.Mapnumber;
+            ti.MapID = tdb.Overviewmap.Mapnumber;
 
             tileinfo.Add(ti);
          }
 
-         for (int i = 0; i < tdb.Tilemap.Count; i++) {
-            TileInfo ti = new TileInfo();
-
-            ti.East.ValueDegree = tdb.Tilemap[i].East;
-            ti.North.ValueDegree = tdb.Tilemap[i].North;
-            ti.South.ValueDegree = tdb.Tilemap[i].South;
-            ti.West.ValueDegree = tdb.Tilemap[i].West;
-
-            ti.MapNumber = tdb.Tilemap[i].Mapnumber;
-            ti.HasCopyright = tdb.Tilemap[i].HasCopyright > 0;
-            //tdb.Tilemap[i].ParentMapnumber -> tdb.Overviewmap.Mapnumber
-            //ti.MapID -> TRE
-
-            ti.Description = tdb.Tilemap[i].Description;
-            for (int j = 0; j < tdb.Tilemap[i].Name.Count; j++)
-               ti.SubFileName.Add(tdb.Tilemap[i].Name[j]);
-            for (int j = 0; j < tdb.Tilemap[i].DataSize.Count; j++)
-               ti.SubFileSize.Add(tdb.Tilemap[i].DataSize[j]);
-
-            tileinfo.Add(ti);
-         }
+         for (int i = 0; i < tdb.Tilemap.Count; i++)
+            tileinfo.Add(new TileInfo(tdb.Tilemap[i]));
 
       }
 
@@ -1518,6 +1530,126 @@ namespace GmTool {
             bw.WriteString(":key_ok\r\n", null, false);
             bw.WriteString("reg DELETE " + FamilyKey + " /f\r\n", null, false);
             bw.Dispose();
+         }
+      }
+
+      /// <summary>
+      /// erzeugt i.W. die Dateiliste der TDB neu
+      /// </summary>
+      /// <param name="tdbfile"></param>
+      public static void RefreshTDB(string tdbfile) {
+         File.Copy(tdbfile, tdbfile + "~", true);
+
+         int productid = -1;
+         int familyid = -1;
+         ushort productversion = 0;
+         int codepage = -1;
+         string familyname = "";
+         string seriesname = "";
+         short routable = -1;
+         short maxroutingtype = -1;
+         short hasprofile = -1;
+         short hasdem = -1;
+         short maxcoordbits4overview = -1;
+         string mapdescription = "";
+         List<File_TDB.SegmentedCopyright.Segment> copyrightsegments = new List<File_TDB.SegmentedCopyright.Segment>();
+         uint overviewmapno = 0;
+         List<TileInfo> tileinfo = new List<TileInfo>();
+
+         using (BinaryReaderWriter br = new BinaryReaderWriter(tdbfile, true)) {
+            GetInfosFromTDB(br,
+                     ref productid,
+                     ref familyid,
+                     ref productversion,
+                     ref codepage,
+                     ref familyname,
+                     ref seriesname,
+                     ref routable,
+                     ref maxroutingtype,
+                     ref hasprofile,
+                     ref hasdem,
+                     ref maxcoordbits4overview,
+                     ref mapdescription,
+                     ref copyrightsegments,
+                     ref overviewmapno,
+                     tileinfo);
+            br.Dispose();
+         }
+
+         // Akt. der TileInfos
+         List<TileInfo> newtileinfo = new List<TileInfo>();
+         string[] trefiles = Directory.GetFiles(Path.GetDirectoryName(tdbfile), "*.TRE", SearchOption.AllDirectories);
+         if (trefiles.Length > 0) { // gmapi
+            foreach (string trefile in trefiles) {
+               TileInfo ti = new TileInfo();
+               using (BinaryReaderWriter br = new BinaryReaderWriter(trefile, true)) {
+                  SetTileInfoDataFromTre(ti, br);
+                  string[] mapfiles = Directory.GetFiles(Path.GetDirectoryName(trefile), Path.GetFileNameWithoutExtension(trefile) + ".*", SearchOption.TopDirectoryOnly);
+                  foreach (string file in mapfiles) {
+                     ti.SubFileName.Add(Path.GetFileName(file));
+                     ti.SubFileSize.Add((uint)(new FileInfo(file).Length));
+                  }
+                  newtileinfo.Add(ti);
+               }
+            }
+         } else {
+            string[] imgfiles = Directory.GetFiles(Path.GetDirectoryName(tdbfile), "*.IMG", SearchOption.TopDirectoryOnly); // MKGMAP-Standard
+            foreach (string imgfile in imgfiles) {
+               TileInfo ti = new TileInfo();
+               using (BinaryReaderWriter br = new BinaryReaderWriter(imgfile, true)) {
+                  SimpleFilesystem sf = new SimpleFilesystem();
+                  sf.Read(br);
+                  string basename = "";
+                  for (int i = 0; i < sf.FileCount; i++) {
+                     string file = sf.Filename(i);
+                     if (Path.GetExtension(file) == ".TRE") {
+                        basename = Path.GetFileNameWithoutExtension(file);
+                        break;
+                     }
+                  }
+                  if (basename != "") {
+                     for (int i = 0; i < sf.FileCount; i++) {
+                        string file = sf.Filename(i);
+                        if (basename == Path.GetFileNameWithoutExtension(file).ToUpper()) {
+                           ti.SubFileName.Add(file);
+                           ti.SubFileSize.Add(sf.Filesize(i));
+                        }
+                     }
+                     newtileinfo.Add(ti);
+                  }
+               }
+            }
+         }
+
+         if (newtileinfo.Count > 0) {
+            // Beschreibungen der alten Liste übernehmen (nach Möglichkeit)
+            for (int i = 0; i < newtileinfo.Count; i++) {
+               newtileinfo[i].Description = newtileinfo[i].ToString();
+               for (int j = 0; j < tileinfo.Count; j++) {
+                  if (tileinfo[j].MapID == newtileinfo[i].MapID) {
+                     newtileinfo[i].Description = tileinfo[i].Description;
+                     break;
+                  }
+               }
+            }
+
+            CreateTdbFile(tdbfile,
+                          productid,
+                          familyid,
+                          codepage,
+                          familyname,
+                          seriesname,
+                          productversion,
+                          (byte)routable,
+                          mapdescription,
+                          (byte)maxroutingtype,
+                          (byte)hasdem,
+                          (byte)hasprofile,
+                          maxcoordbits4overview,
+                          copyrightsegments,
+                          overviewmapno,
+                          newtileinfo,
+                          true);
          }
       }
 

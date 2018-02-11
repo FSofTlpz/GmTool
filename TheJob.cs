@@ -158,6 +158,11 @@ namespace GmTool {
                   }
                   break;
 
+               case Options.ToDoType.RefreshTDB:
+                  foreach (string file in InputFiles)
+                     MapsourceFileCreater.RefreshTDB(file);
+                  break;
+
                case Options.ToDoType.AnalyzingTypes:
                case Options.ToDoType.AnalyzingTypesLong:
                   AnalyzeTypes analyze = new AnalyzeTypes();
@@ -939,7 +944,7 @@ namespace GmTool {
                   for (int i = 0; i < file.SubdivList.Count; i++) { // in jeder Subdiv ..
                      StdFile_RGN.SubdivData sd = file.SubdivList[i];
                      for (int j = sd.AreaList.Count - 1; j >= 0; j--) // .. jedes Polygon ..
-                        if (sd.AreaList[j].Typ == 0x4b) { // .. mit dem Typ 0x4B (Hintergrund) ..
+                        if (sd.AreaList[j].Type == 0x4b) { // .. mit dem Typ 0x4B (Hintergrund) ..
                            sd.AreaList.RemoveAt(j); // .. entfernen
                            polycount++;
                         }
@@ -954,7 +959,7 @@ namespace GmTool {
 
                      bool bBackPolyExist = false;
                      for (int j = 0; j < sd.AreaList.Count; j++) // .. Test auf Polygon 0x4B 
-                        if (sd.AreaList[j].Typ == 0x4b) {
+                        if (sd.AreaList[j].Type == 0x4b) {
                            bBackPolyExist = true;
                            break;
                         }
@@ -972,7 +977,7 @@ namespace GmTool {
                            p.Add(new MapUnitPoint(b.Left, b.Bottom));
 
                            StdFile_RGN.RawPolyData pd = new StdFile_RGN.RawPolyData(true);
-                           pd.Typ = 0x4b;
+                           pd.Type = 0x4b;
                            pd.SetMapUnitPoints(coordbits, sdi.Center, p);
 
                            sd.AreaList.Add(pd);

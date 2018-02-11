@@ -207,7 +207,7 @@ namespace GmTool {
             StdFile_RGN.SubdivData sd = rgn.SubdivList[i];
 
             foreach (var item in sd.AreaList) {
-               typ = item.Typ << 8 | item.Subtyp;
+               typ = item.Type << 8 | item.Subtype;
                string txt = null;
                if (item.LabelOffset != 0 && lbl.TextList.Count > 0)
                   if (!item.LabelInNET)            // das dürfte immer so sein
@@ -216,7 +216,7 @@ namespace GmTool {
             }
 
             foreach (var item in sd.ExtAreaList) {
-               typ = ((0x100 | item.Typ) << 8) | item.Subtyp;
+               typ = ((0x100 | item.Type) << 8) | item.Subtype;
                string txt = null;
                if (item.HasLabel && lbl.TextList.Count > 0)
                   txt = lbl.GetText(item.LabelOffset);
@@ -224,7 +224,7 @@ namespace GmTool {
             }
 
             foreach (var item in sd.LineList) {
-               typ = item.Typ << 8 | item.Subtyp;
+               typ = item.Type << 8 | item.Subtype;
                string txt = null;
                if (item.LabelOffset != 0 && lbl.TextList.Count > 0)
                   if (!item.LabelInNET)
@@ -235,7 +235,7 @@ namespace GmTool {
             }
 
             foreach (var item in sd.ExtLineList) {
-               typ = ((0x100 | item.Typ) << 8) | item.Subtyp;
+               typ = ((0x100 | item.Type) << 8) | item.Subtype;
                string txt = null;
                if (item.HasLabel && lbl.TextList.Count > 0)
                   txt = lbl.GetText(item.LabelOffset);
@@ -243,7 +243,7 @@ namespace GmTool {
             }
 
             foreach (var item in sd.IdxPointList) {      // vor den "normalen" Punkten einlesen, damit der ev. Index-Verweise stimmen (z.B. für Exits)
-               typ = item.Typ << 8 | item.Subtyp;
+               typ = item.Type << 8 | item.Subtype;
                string txt = null;
                if (item.LabelOffset != 0 && lbl.TextList.Count > 0)
                   if (!item.IsPoiOffset)
@@ -258,7 +258,7 @@ namespace GmTool {
             }
 
             foreach (var item in sd.PointList) {
-               typ = item.Typ << 8 | item.Subtyp;
+               typ = item.Type << 8 | item.Subtype;
                string txt = null;
                if (item.LabelOffset != 0 && lbl.TextList.Count > 0)
                   if (!item.IsPoiOffset)
@@ -273,7 +273,7 @@ namespace GmTool {
             }
 
             foreach (var item in sd.ExtPointList) {
-               typ = ((0x100 | item.Typ) << 8) | item.Subtyp;
+               typ = ((0x100 | item.Type) << 8) | item.Subtype;
                string txt = null;
                if (item.HasLabel && lbl.TextList.Count > 0)
                   txt = lbl.GetText(item.LabelOffset);

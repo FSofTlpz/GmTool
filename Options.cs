@@ -86,6 +86,11 @@ namespace GmTool {
          CreateFiles4Mapsource,
 
          /// <summary>
+         /// Refresh (i.W. die Dateiliste) einer TDB
+         /// </summary>
+         RefreshTDB,
+
+         /// <summary>
          /// die in den geografischen Daten verwendeten Typen ermitteln
          /// </summary>
          AnalyzingTypes,
@@ -260,6 +265,8 @@ namespace GmTool {
          SetHasProfile,
          SetMaxCoordBits4Overview,
 
+         RefreshTDB,
+
          Help,
       }
 
@@ -339,6 +346,8 @@ namespace GmTool {
          cmd.DefineOption((int)MyOptions.SetHasProfile, "hasprofile", "", "setzt die HasProfile-Eigenschaft in TDB-Dateien (i.A. 0 oder 1)", FSoftUtils.CmdlineOptions.OptionArgumentType.UnsignedInteger);
          cmd.DefineOption((int)MyOptions.SetHighestRoutable, "highestroutable", "", "setzt die HighestRoutable-Eigenschaft in TDB-Dateien (z.B. 0x18)", FSoftUtils.CmdlineOptions.OptionArgumentType.UnsignedInteger);
          cmd.DefineOption((int)MyOptions.SetMaxCoordBits4Overview, "maxbits4overview", "", "setzt die max. Bitanzahl der Koordinaten für das Anzeigen der Overviewkarte in TDB-Dateien (z.B. 18)", FSoftUtils.CmdlineOptions.OptionArgumentType.UnsignedInteger);
+
+         cmd.DefineOption((int)MyOptions.RefreshTDB, "refreshtdb", "", "liest (i.W.) die Dateiliste einer TDB neu ein", FSoftUtils.CmdlineOptions.OptionArgumentType.Nothing);
 
          cmd.DefineOption((int)MyOptions.Help, "help", "?", "diese Hilfe", FSoftUtils.CmdlineOptions.OptionArgumentType.Nothing);
       }
@@ -667,6 +676,10 @@ namespace GmTool {
 
                      case MyOptions.SetMaxCoordBits4Overview:
                         MaxCoordBits4Overview.Set((int)cmd.UnsignedIntegerValue((int)opt));
+                        break;
+
+                     case MyOptions.RefreshTDB:
+                        ToDo = ToDoType.RefreshTDB;
                         break;
 
                      case MyOptions.Help:

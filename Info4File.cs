@@ -523,8 +523,8 @@ namespace GmTool {
                         MapUnitPoint pt = item.GetMapUnitPoint(coordbits, sdinf.Center);
                         Info_ShowInfoItem(firstlevel + 1, string.Format("Subdiv {0}, IDX-Punkt 0x{1:x2}{2:x2}, Label: {3}, ({4:G}° {5:G}°)",
                                                             i + 1,
-                                                            item.Typ,
-                                                            item.Subtyp,
+                                                            item.Type,
+                                                            item.Subtype,
                                                             item.LabelOffset > 0,
                                                             pt.LongitudeDegree,
                                                             pt.LatitudeDegree));
@@ -533,8 +533,8 @@ namespace GmTool {
                         MapUnitPoint pt = item.GetMapUnitPoint(coordbits, sdinf.Center);
                         Info_ShowInfoItem(firstlevel + 1, string.Format("Subdiv {0}, Punkt 0x{1:x2}{2:x2}, Label: {3}, ({4:G}° {5:G}°)",
                                                             i + 1,
-                                                            item.Typ,
-                                                            item.Subtyp,
+                                                            item.Type,
+                                                            item.Subtype,
                                                             item.LabelOffset > 0,
                                                             pt.LongitudeDegree,
                                                             pt.LatitudeDegree));
@@ -544,7 +544,7 @@ namespace GmTool {
                         StringBuilder sb = new StringBuilder();
                         sb.AppendFormat("Subdiv {0}, Linie 0x{1:x2}, Direction: {2}, Label: {3}, {4} Punkte",
                                                             i + 1,
-                                                            item.Typ,
+                                                            item.Type,
                                                             item.DirectionIndicator,
                                                             item.LabelOffset > 0,
                                                             pt.Count);
@@ -557,7 +557,7 @@ namespace GmTool {
                         StringBuilder sb = new StringBuilder();
                         sb.AppendFormat("Subdiv {0}, Fläche 0x{1:x2}, Direction: {2}, Label: {3}, {4} Punkte",
                                                             i + 1,
-                                                            item.Typ,
+                                                            item.Type,
                                                             item.DirectionIndicator,
                                                             item.LabelOffset > 0,
                                                             pt.Count);
@@ -570,8 +570,8 @@ namespace GmTool {
                         MapUnitPoint pt = item.GetMapUnitPoint(coordbits, sdinf.Center);
                         Info_ShowInfoItem(firstlevel + 1, string.Format("Subdiv {0}, erw. Punkt 0x{1:x2}{2:x2}, Label: {3}, ({4:G}° {5:G}°)",
                                                             i + 1,
-                                                            item.Typ,
-                                                            item.Subtyp,
+                                                            item.Type,
+                                                            item.Subtype,
                                                             item.HasLabel,
                                                             pt.Longitude,
                                                             pt.Latitude));
@@ -581,8 +581,8 @@ namespace GmTool {
                         StringBuilder sb = new StringBuilder();
                         sb.AppendFormat("Subdiv {0}, erw. Linie 0x{1:x2}{2:x2}, Label: {3}, {4} Punkte",
                                                             i + 1,
-                                                            item.Typ,
-                                                            item.Subtyp,
+                                                            item.Type,
+                                                            item.Subtype,
                                                             item.HasLabel,
                                                             pt.Count);
                         for (int j = 0; j < pt.Count; j++)
@@ -594,8 +594,8 @@ namespace GmTool {
                         StringBuilder sb = new StringBuilder();
                         sb.AppendFormat("Subdiv {0}, erw. Fläche 0x{1:x2}{2:x2}, Label: {3}, {4} Punkte",
                                                             i + 1,
-                                                            item.Typ,
-                                                            item.Subtyp,
+                                                            item.Type,
+                                                            item.Subtype,
                                                             item.HasLabel,
                                                             pt.Count);
                         for (int j = 0; j < pt.Count; j++)
@@ -635,7 +635,7 @@ namespace GmTool {
             for (int i = 0; i < typ.PoiCount; i++) {
                sb.Clear();
                GarminCore.Files.Typ.POI poi = typ.GetPoi(i);
-               sb.Append("0x" + (((int)(poi.Typ) << 8) + (int)poi.Subtyp).ToString("X"));
+               sb.Append("0x" + (((int)(poi.Type) << 8) + (int)poi.Subtype).ToString("X"));
                string txt = poi.Text.GetAsSimpleString();
                if (txt.Length > 0)
                   sb.Append(", " + txt);
@@ -648,7 +648,7 @@ namespace GmTool {
             for (int i = 0; i < typ.PolylineCount; i++) {
                sb.Clear();
                GarminCore.Files.Typ.Polyline poly = typ.GetPolyline(i);
-               sb.Append("0x" + (((int)(poly.Typ) << 8) + (int)poly.Subtyp).ToString("X"));
+               sb.Append("0x" + (((int)(poly.Type) << 8) + (int)poly.Subtype).ToString("X"));
                string txt = poly.Text.GetAsSimpleString();
                if (txt.Length > 0)
                   sb.Append(", " + txt);
@@ -661,11 +661,11 @@ namespace GmTool {
             for (int i = 0; i < typ.PolygonCount; i++) {
                sb.Clear();
                GarminCore.Files.Typ.Polygone poly = typ.GetPolygone(i);
-               sb.Append("0x" + (((int)(poly.Typ) << 8) + (int)poly.Subtyp).ToString("X"));
+               sb.Append("0x" + (((int)(poly.Type) << 8) + (int)poly.Subtype).ToString("X"));
                string txt = poly.Text.GetAsSimpleString();
                if (txt.Length > 0)
                   sb.Append(", " + txt);
-               sb.AppendFormat(", Polygontype {0}, Draworder {1}, DayColor1 {2}, DayColor2 {3}", poly.Polygontype, poly.Draworder, poly.DayColor1.ToString(), poly.DayColor2.ToString());
+               sb.AppendFormat(", Polygontype {0}, Draworder {1}, DayColor1 {2}, DayColor2 {3}", poly.Type, poly.Draworder, poly.DayColor1.ToString(), poly.DayColor2.ToString());
                Info_ShowInfoItem(firstlevel + 1, "", sb.ToString());
             }
       }
