@@ -51,4 +51,6 @@ create a new TDB new.tdb with infos from files in the directory and an old.tdb a
       REM for gmap-style maps with TDB in the Product1-directory:
       gmtool -i old.tdb -i . --withsubdirs --mapsource=tdb:new.tdb;noov;notyp;nomdx;nomdr;noinst --hasdem=1 -o . --overwrite
       
+refresh a existing TDB (filesize, new files, ...):
    
+      gmtool -i my.tdb --refreshtdb

@@ -1576,6 +1576,8 @@ namespace GmTool {
             br.Dispose();
          }
 
+         bool bDEMExist = false;
+
          // Akt. der TileInfos
          List<TileInfo> newtileinfo = new List<TileInfo>();
          string[] trefiles = Directory.GetFiles(Path.GetDirectoryName(tdbfile), "*.TRE", SearchOption.AllDirectories);
@@ -1588,6 +1590,8 @@ namespace GmTool {
                   foreach (string file in mapfiles) {
                      ti.SubFileName.Add(Path.GetFileName(file));
                      ti.SubFileSize.Add((uint)(new FileInfo(file).Length));
+                     if (!bDEMExist)
+                        bDEMExist = Path.GetExtension(file).ToUpper() == ".DEM";
                   }
                   newtileinfo.Add(ti);
                }
@@ -1613,6 +1617,8 @@ namespace GmTool {
                         if (basename == Path.GetFileNameWithoutExtension(file).ToUpper()) {
                            ti.SubFileName.Add(file);
                            ti.SubFileSize.Add(sf.Filesize(i));
+                           if (!bDEMExist)
+                              bDEMExist = Path.GetExtension(file).ToUpper() == ".DEM";
                         }
                      }
                      newtileinfo.Add(ti);
@@ -1620,6 +1626,8 @@ namespace GmTool {
                }
             }
          }
+
+         hasdem = (short)(bDEMExist ? 1 : 0);
 
          if (newtileinfo.Count > 0) {
             // Beschreibungen der alten Liste übernehmen (nach Möglichkeit)
