@@ -9,8 +9,9 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>GmTool</RootNamespace>
     <AssemblyName>GmTool</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -43,8 +44,8 @@
     <Compile Include="Info4File.cs" />
     <Compile Include="MapsourceFileCreater.cs" />
     <Compile Include="TheJob.cs" />
-    <Compile Include="FSoftUtils\CmdlineOptions.cs" />
-    <Compile Include="FSoftUtils\SimpleXmlDocument.cs" />
+    <Compile Include="FSofTUtils\CmdlineOptions.cs" />
+    <Compile Include="FSofTUtils\SimpleXmlDocument.cs" />
     <Compile Include="Options.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -54,6 +55,9 @@
       <Project>{38020956-623a-49c4-a9ca-12240d191add}</Project>
       <Name>GarminCore</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

@@ -209,9 +209,9 @@ namespace GmTool {
             foreach (var item in sd.AreaList) {
                typ = item.Type << 8 | item.Subtype;
                string txt = null;
-               if (item.LabelOffset != 0 && lbl.TextList.Count > 0)
+               if (item.LabelOffsetInLBL != 0 && lbl.TextList.Count > 0)
                   if (!item.LabelInNET)            // das dürfte immer so sein
-                     txt = lbl.GetText(item.LabelOffset);
+                     txt = lbl.GetText(item.LabelOffsetInLBL, false);
                RegisterArea(typ, txt);
             }
 
@@ -219,16 +219,16 @@ namespace GmTool {
                typ = ((0x100 | item.Type) << 8) | item.Subtype;
                string txt = null;
                if (item.HasLabel && lbl.TextList.Count > 0)
-                  txt = lbl.GetText(item.LabelOffset);
+                  txt = lbl.GetText(item.LabelOffsetInLBL, false);
                RegisterArea(typ, txt);
             }
 
             foreach (var item in sd.LineList) {
                typ = item.Type << 8 | item.Subtype;
                string txt = null;
-               if (item.LabelOffset != 0 && lbl.TextList.Count > 0)
+               if (item.LabelOffsetInLBL != 0 && lbl.TextList.Count > 0)
                   if (!item.LabelInNET)
-                     txt = lbl.GetText(item.LabelOffset);
+                     txt = lbl.GetText(item.LabelOffsetInLBL, false);
                //   else
                //      p.NetData = new DetailMap.RoadDataExt(net.Roaddata[net.Idx4Offset[item.LabelOffset]], lbl);
                RegisterLine(typ, txt);
@@ -238,16 +238,16 @@ namespace GmTool {
                typ = ((0x100 | item.Type) << 8) | item.Subtype;
                string txt = null;
                if (item.HasLabel && lbl.TextList.Count > 0)
-                  txt = lbl.GetText(item.LabelOffset);
+                  txt = lbl.GetText(item.LabelOffsetInLBL, false);
                RegisterLine(typ, txt);
             }
 
-            foreach (var item in sd.IdxPointList) {      // vor den "normalen" Punkten einlesen, damit der ev. Index-Verweise stimmen (z.B. für Exits)
+            foreach (var item in sd.PointList2) {      // vor den "normalen" Punkten einlesen, damit der ev. Index-Verweise stimmen (z.B. für Exits)
                typ = item.Type << 8 | item.Subtype;
                string txt = null;
-               if (item.LabelOffset != 0 && lbl.TextList.Count > 0)
+               if (item.LabelOffsetInLBL != 0 && lbl.TextList.Count > 0)
                   if (!item.IsPoiOffset)
-                     txt = lbl.GetText(item.LabelOffset);
+                     txt = lbl.GetText(item.LabelOffsetInLBL, false);
                //   else {
                //      int idx = lbl.POIPropertiesListOffsets[item.LabelOffset];
                //      DetailMap.PoiDataExt pd = new DetailMap.PoiDataExt(lbl.POIPropertiesList[idx], lbl);
@@ -257,12 +257,12 @@ namespace GmTool {
                RegisterPoint(typ, txt);
             }
 
-            foreach (var item in sd.PointList) {
+            foreach (var item in sd.PointList1) {
                typ = item.Type << 8 | item.Subtype;
                string txt = null;
-               if (item.LabelOffset != 0 && lbl.TextList.Count > 0)
+               if (item.LabelOffsetInLBL != 0 && lbl.TextList.Count > 0)
                   if (!item.IsPoiOffset)
-                     txt = lbl.GetText(item.LabelOffset);
+                     txt = lbl.GetText(item.LabelOffsetInLBL, false);
                //   else {
                //      int idx = lbl.POIPropertiesListOffsets[item.LabelOffset];
                //      DetailMap.PoiDataExt pd = new DetailMap.PoiDataExt(lbl.POIPropertiesList[idx], lbl);
@@ -276,7 +276,7 @@ namespace GmTool {
                typ = ((0x100 | item.Type) << 8) | item.Subtype;
                string txt = null;
                if (item.HasLabel && lbl.TextList.Count > 0)
-                  txt = lbl.GetText(item.LabelOffset);
+                  txt = lbl.GetText(item.LabelOffsetInLBL, false);
                RegisterPoint(typ, txt);
             }
          }

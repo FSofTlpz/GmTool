@@ -18,7 +18,7 @@ namespace GmTool {
       public string[] Input { get; private set; }
 
       /// <summary>
-      /// bei Verwendung von Wildcards werden Eingabedateien auch in Unterverzeichnissen gesucht
+      /// Eingabedateien werden auch in Unterverzeichnissen gesucht
       /// </summary>
       public bool InputWithSubdirs { get; private set; }
 
@@ -98,6 +98,11 @@ namespace GmTool {
          /// die in den geografischen Daten verwendeten Typen und alle Bezeichnungen ermitteln
          /// </summary>
          AnalyzingTypesLong,
+
+         /// <summary>
+         /// setzte eine neue TYP-Datei
+         /// </summary>
+         SetNewTypfile,
 
          /// <summary>
          /// Ändern von Dateieigenschaften
@@ -233,6 +238,7 @@ namespace GmTool {
       public Property MapsourceNoTDBfile { get; private set; }
       public Property MapsourceNoInstfiles { get; private set; }
 
+      public Property NewTypfile { get; private set; }
 
       FSoftUtils.CmdlineOptions cmd;
 
@@ -267,6 +273,8 @@ namespace GmTool {
 
          RefreshTDB,
 
+         NewTypfile,
+
          Help,
       }
 
@@ -286,9 +294,9 @@ namespace GmTool {
          //cmd.DefineOption((int)MyOptions.MyMString, "mstring", "m", "string\nmehrfach verwendbar", FsoftUtils.CmdlineOptions.OptionArgumentType.String, int.MaxValue);
 
 
-         cmd.DefineOption((int)MyOptions.Input, "input", "i", "Eingabedatei (mehrfach verwendbar)", FSoftUtils.CmdlineOptions.OptionArgumentType.String, int.MaxValue);
+         cmd.DefineOption((int)MyOptions.Input, "input", "i", "Eingabedatei (mehrfach verwendbar, auch * und ?)", FSoftUtils.CmdlineOptions.OptionArgumentType.String, int.MaxValue);
          cmd.DefineOption((int)MyOptions.InputListfile, "inputlist", "", "Textdatei mit den Eingabedateien", FSoftUtils.CmdlineOptions.OptionArgumentType.String);
-         cmd.DefineOption((int)MyOptions.InputWithSubdirs, "withsubdirs", "", "bei Verwendung von * oder ? werden Eingabedateien auch in Unterverzeichnissen gesucht", FSoftUtils.CmdlineOptions.OptionArgumentType.BooleanOrNothing);
+         cmd.DefineOption((int)MyOptions.InputWithSubdirs, "withsubdirs", "", "Eingabedateien auch in Unterverzeichnissen suchen (Standard true)", FSoftUtils.CmdlineOptions.OptionArgumentType.BooleanOrNothing);
          cmd.DefineOption((int)MyOptions.Output, "output", "o", "Ausgabeziel", FSoftUtils.CmdlineOptions.OptionArgumentType.String);
          cmd.DefineOption((int)MyOptions.OutputOverwrite, "overwrite", "O", "Ausgabeziel bei Bedarf überschreiben (ohne Argument 'true', Standard 'false')", FSoftUtils.CmdlineOptions.OptionArgumentType.BooleanOrNothing);
 
@@ -297,8 +305,8 @@ namespace GmTool {
                                                               "   r   teilt rekursiv zusätzlich auch in der IMG-Datei enthaltene GMP/IMG-Dateien auf\n" +
                                                               "   j   verbindet die beim Aufteilen jeweils zusammengehörenden\n" +
                                                               "       TRE-, LBL-, RGN-, NET-, NOD-, DEM- und MAR-Dateien wieder zu einer IMG-Datei", FSoftUtils.CmdlineOptions.OptionArgumentType.StringOrNothing);
-         cmd.DefineOption((int)MyOptions.Join, "join", "j", "verbindet die Dateien zu einer Geräte- oder Kachel-IMG-Datei (bzw. GMP)\n"+
-                                                            "   device  erzeugt eine Device-IMG\n"+
+         cmd.DefineOption((int)MyOptions.Join, "join", "j", "verbindet die Dateien zu einer Geräte- oder Kachel-IMG-Datei (bzw. GMP)\n" +
+                                                            "   device  erzeugt eine Device-IMG\n" +
                                                             "   tile    erzeugt eine Kachel-Datei", FSoftUtils.CmdlineOptions.OptionArgumentType.StringOrNothing);
          cmd.DefineOption((int)MyOptions.CreateFiles4Mapsource, "mapsource", "m", "erzeugt Dateien für Mapsource/Basecamp (mehrfach verwendbar)\n" +
                                                                                   "weitere Sub-Optionen (ev. mit ';' getrennt):\n" +
@@ -348,6 +356,8 @@ namespace GmTool {
          cmd.DefineOption((int)MyOptions.SetMaxCoordBits4Overview, "maxbits4overview", "", "setzt die max. Bitanzahl der Koordinaten für das Anzeigen der Overviewkarte in TDB-Dateien (z.B. 18)", FSoftUtils.CmdlineOptions.OptionArgumentType.UnsignedInteger);
 
          cmd.DefineOption((int)MyOptions.RefreshTDB, "refreshtdb", "", "liest (i.W.) die Dateiliste einer TDB neu ein", FSoftUtils.CmdlineOptions.OptionArgumentType.Nothing);
+
+         cmd.DefineOption((int)MyOptions.NewTypfile, "newtypfile", "", "ersetzt die TYP-Datei einer IMG-Datei durch eine neue", FSoftUtils.CmdlineOptions.OptionArgumentType.String);
 
          cmd.DefineOption((int)MyOptions.Help, "help", "?", "diese Hilfe", FSoftUtils.CmdlineOptions.OptionArgumentType.Nothing);
       }
@@ -402,7 +412,8 @@ namespace GmTool {
          MapsourceNoTDBfile = new Property();
          MapsourceNoInstfiles = new Property();
 
-      }
+         NewTypfile = new Property();
+}
 
       /// <summary>
       /// Auswertung der Optionen
@@ -489,8 +500,8 @@ namespace GmTool {
                                     FID.Set(InterpretUInt(arg));
                                  } else if (arg.StartsWith("cp:")) {
                                     Codepage.Set(InterpretUInt(arg));
-                                 //} else if (arg.StartsWith("ovno:")) {
-                                 //   MapsourceOverviewNo.Set(InterpretUInt(arg));
+                                    //} else if (arg.StartsWith("ovno:")) {
+                                    //   MapsourceOverviewNo.Set(InterpretUInt(arg));
 
                                  } else if (arg.StartsWith("ov:")) {
                                     MapsourceOverviewfile.Set(arg.Substring(3));
@@ -682,6 +693,11 @@ namespace GmTool {
                         ToDo = ToDoType.RefreshTDB;
                         break;
 
+                     case MyOptions.NewTypfile:
+                        NewTypfile.Set(cmd.StringValue((int)opt));
+                        ToDo = ToDoType.SetNewTypfile;
+                        break;
+
                      case MyOptions.Help:
                         ShowHelp();
                         break;
@@ -712,8 +728,7 @@ namespace GmTool {
             if (types == null)
                types = new SortedSet<int>();
             for (int j = 0; j < subargs.Length; j++) {
-               int type;
-               if (!FSoftUtils.CmdlineOptions.IntegerIsPossible(subargs[j], out type))
+               if (!FSoftUtils.CmdlineOptions.IntegerIsPossible(subargs[j], out int type))
                   throw new Exception("Die Typangabe '" + subargs[j] + "' in '" + arg + "' kann nicht interpretiert werden.");
                if (!types.Contains(type))
                   types.Add(type);
@@ -727,9 +742,8 @@ namespace GmTool {
       /// <param name="txt"></param>
       /// <returns></returns>
       uint InterpretUInt(string txt) {
-         uint val;
          int pos = txt.IndexOf(':');
-         if (pos < 0 || !FSoftUtils.CmdlineOptions.UnsignedIntegerIsPossible(txt.Trim().Substring(pos + 1), out val))
+         if (pos < 0 || !FSoftUtils.CmdlineOptions.UnsignedIntegerIsPossible(txt.Trim().Substring(pos + 1), out uint val))
             throw new Exception("'" + txt + "' kann nicht als Zahl interpretiert werden.");
          return val;
       }
@@ -740,9 +754,8 @@ namespace GmTool {
       /// <param name="txt"></param>
       /// <returns></returns>
       bool InterpretBool(string txt) {
-         bool val;
          int pos = txt.IndexOf(':');
-         if (pos < 0 || !FSoftUtils.CmdlineOptions.BooleanIsPossible(txt.Trim().Substring(pos + 1), out val))
+         if (pos < 0 || !FSoftUtils.CmdlineOptions.BooleanIsPossible(txt.Trim().Substring(pos + 1), out bool val))
             throw new Exception("'" + txt + "' kann nicht als logischer Wert interpretiert werden.");
          return val;
       }

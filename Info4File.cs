@@ -225,7 +225,7 @@ namespace GmTool {
          }
          if (lbl != null) {
             for (int i = 0; i < tre.CopyrightOffsetsList.Count; i++) {
-               string txt = lbl.GetText(tre.CopyrightOffsetsList[i]);
+               string txt = lbl.GetText(tre.CopyrightOffsetsList[i], false);
                if (txt != null) {
                   string[] lines = txt.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                   for (int j = 0; j < lines.Length; j++)
@@ -303,8 +303,8 @@ namespace GmTool {
                               break;
                         }
                         for (int i = 0; i < max; i++) {
-                           int maxlevel, type, subtype, unknown;
-                           maxlevel = tre.GetOverviewData(ovtype, exttype, i, out type, out subtype, out unknown);
+                           int maxlevel;
+                           maxlevel = tre.GetOverviewData(ovtype, exttype, i, out int type, out int subtype, out int unknown);
                            string txt = "Typ 0x";
                            if (type >= 0)
                               txt += type.ToString("x2");
@@ -344,8 +344,8 @@ namespace GmTool {
             Info_ShowInfoItem(firstlevel, "Stadt-Einträge", lbl.CityAndRegionOrCountryDataList.Count);
             Info_ShowInfoItem(firstlevel, "Exit-Einträge", lbl.ExitList.Count);
             Info_ShowInfoItem(firstlevel, "Highway-Einträge", lbl.HighwayExitDefList.Count);
-            Info_ShowInfoItem(firstlevel, "Index-POIS's", lbl.PoiIndexDataList.Count);
-            Info_ShowInfoItem(firstlevel, "POI-Daten-Einträge", lbl.POIPropertiesList.Count);
+            Info_ShowInfoItem(firstlevel, "Index-Points", lbl.PointIndexList4RGN.Count);
+            Info_ShowInfoItem(firstlevel, "Point-Daten-Einträge", lbl.PointPropertiesList.Count);
             Info_ShowInfoItem(firstlevel, "Anzahl der Texte", lbl.TextList.Count);
          }
          if (info > 1) {
@@ -441,15 +441,19 @@ namespace GmTool {
             Info_ShowInfoItem(firstlevel, "Unknown_0x54", net.Unknown_0x54, true);
             Info_ShowInfoItem(firstlevel, "UnknownBlock_0x56", net.UnknownBlock_0x56.ToString());
             Info_ShowInfoItem(firstlevel, "Unknown_0x5E", net.Unknown_0x5E, true);
+
+            if (!net.RawRead && net.Lbl != null) {
+               Info_ShowInfoItem(firstlevel, "Straßen-Einträge", net.Roaddata.Count.ToString());
+               Info_ShowInfoItem(firstlevel, "Straßennamen-Offsets", net.SortedOffsets.Count.ToString());
+            }
          }
 
-         if (!net.RawRead && net.Lbl != null && info > 0)
-            Info_ShowInfoItem(firstlevel, "Straßen-Einträge", net.Roaddata.Count.ToString());
       }
 
       static void Info_NET(BinaryReaderWriter br, StdFile_LBL lbl, int info) {
-         StdFile_NET net = new StdFile_NET();
-         net.Lbl = lbl;
+         StdFile_NET net = new StdFile_NET {
+            Lbl = lbl
+         };
          net.Read(br, info == 0 ? false : true);
          Info_NET(1, net, lbl, info);
       }
@@ -458,24 +462,28 @@ namespace GmTool {
          Info_ShowInfoItem(firstlevel, "Dateierzeugung", nod.CreationDate);
          Info_ShowInfoItem(firstlevel, "Headerlänge", nod.Headerlength);
          Info_ShowInfoItem(firstlevel, "gesperrt", nod.Locked != 0);
-         Info_ShowInfoItem(firstlevel, "Nod1", nod.Nod1);
-         Info_ShowInfoItem(firstlevel, "Nod2", nod.Nod2);
-         Info_ShowInfoItem(firstlevel, "Nod3", nod.Nod3);
-         Info_ShowInfoItem(firstlevel, "Nod4", nod.Nod4);
+         Info_ShowInfoItem(firstlevel, "Nod1Nodes", nod.Nod1Nodes);
+         Info_ShowInfoItem(firstlevel, "Nod2RoadData", nod.Nod2RoadData);
+         Info_ShowInfoItem(firstlevel, "Nod3BoundaryNodes", nod.Nod3BoundaryNodes);
+         Info_ShowInfoItem(firstlevel, "Nod4HighClassBoundary", nod.Nod4HighClassBoundary);
          Info_ShowInfoItem(firstlevel, "Nod5", nod.Nod5);
          Info_ShowInfoItem(firstlevel, "Nod6", nod.Nod6);
 
          if (info > 1) {
-            Info_ShowInfoItem(firstlevel, "Unknown_0x1D", nod.Unknown_0x1D, true);
-            Info_ShowInfoItem(firstlevel, "Unknown_0x1E", nod.Unknown_0x1E, true);
+            Info_ShowInfoItem(firstlevel, "Flags", nod.Flags, true);
             Info_ShowInfoItem(firstlevel, "Unknown_0x1F", nod.Unknown_0x1F, true);
-            Info_ShowInfoItem(firstlevel, "Unknown_0x21", nod.Unknown_0x21, true);
-            Info_ShowInfoItem(firstlevel, "Unknown_0x23", nod.Unknown_0x23, true);
+            Info_ShowInfoItem(firstlevel, "Align", nod.Align, true);
+            Info_ShowInfoItem(firstlevel, "Mult1", nod.Mult1, true);
+            Info_ShowInfoItem(firstlevel, "TableARecordLen", nod.TableARecordLen, true);
             Info_ShowInfoItem(firstlevel, "Unknown_0x2D", nod.Unknown_0x2D, true);
             Info_ShowInfoItem(firstlevel, "Unknown_0x3B", nod.Unknown_0x3B, true);
-            Info_ShowInfoItem(firstlevel, "Unknown_0x47", nod.Unknown_0x47, true);
-            Info_ShowInfoItem(firstlevel, "Unknown_0x6F", nod.Unknown_0x6F, true);
-            Info_ShowInfoItem(firstlevel, "Unknown_0x6F", nod.Unknown_0x7B, true);
+            if (nod.Headerlength > 0x3F) {
+               for (int i = 0; i < nod.ClassBoundaries.Length; i++)
+                  Info_ShowInfoItem(firstlevel, string.Format("ClassBoundaries[{0}]", i), nod.ClassBoundaries[i], true);
+               Info_ShowInfoItem(firstlevel, "Unknown_0x5B", nod.Unknown_0x5B, true);
+               Info_ShowInfoItem(firstlevel, "Unknown_0x6F", nod.Unknown_0x6F, true);
+               Info_ShowInfoItem(firstlevel, "Unknown_0x7B", nod.Unknown_0x7B, true);
+            }
          }
 
       }
@@ -510,8 +518,8 @@ namespace GmTool {
 
                   StdFile_TRE.SubdivInfoBasic sdinf = tre.SubdivInfoList[i];
                   StdFile_RGN.SubdivData sd = rgn.SubdivList[i];
-                  idxpoints += sd.IdxPointList.Count;
-                  points += sd.PointList.Count;
+                  idxpoints += sd.PointList2.Count;
+                  points += sd.PointList1.Count;
                   lines += sd.LineList.Count;
                   areas += sd.AreaList.Count;
                   extpoints += sd.ExtPointList.Count;
@@ -519,23 +527,23 @@ namespace GmTool {
                   extareas += sd.ExtAreaList.Count;
 
                   if (info > 1) {
-                     foreach (var item in sd.IdxPointList) {
+                     foreach (var item in sd.PointList2) {
                         MapUnitPoint pt = item.GetMapUnitPoint(coordbits, sdinf.Center);
                         Info_ShowInfoItem(firstlevel + 1, string.Format("Subdiv {0}, IDX-Punkt 0x{1:x2}{2:x2}, Label: {3}, ({4:G}° {5:G}°)",
                                                             i + 1,
                                                             item.Type,
                                                             item.Subtype,
-                                                            item.LabelOffset > 0,
+                                                            item.LabelOffsetInLBL > 0,
                                                             pt.LongitudeDegree,
                                                             pt.LatitudeDegree));
                      }
-                     foreach (var item in sd.PointList) {
+                     foreach (var item in sd.PointList1) {
                         MapUnitPoint pt = item.GetMapUnitPoint(coordbits, sdinf.Center);
                         Info_ShowInfoItem(firstlevel + 1, string.Format("Subdiv {0}, Punkt 0x{1:x2}{2:x2}, Label: {3}, ({4:G}° {5:G}°)",
                                                             i + 1,
                                                             item.Type,
                                                             item.Subtype,
-                                                            item.LabelOffset > 0,
+                                                            item.LabelOffsetInLBL > 0,
                                                             pt.LongitudeDegree,
                                                             pt.LatitudeDegree));
                      }
@@ -546,7 +554,7 @@ namespace GmTool {
                                                             i + 1,
                                                             item.Type,
                                                             item.DirectionIndicator,
-                                                            item.LabelOffset > 0,
+                                                            item.LabelOffsetInLBL > 0,
                                                             pt.Count);
                         for (int j = 0; j < pt.Count; j++)
                            sb.AppendFormat(", {0}", pt[j].ToString());
@@ -559,7 +567,7 @@ namespace GmTool {
                                                             i + 1,
                                                             item.Type,
                                                             item.DirectionIndicator,
-                                                            item.LabelOffset > 0,
+                                                            item.LabelOffsetInLBL > 0,
                                                             pt.Count);
                         for (int j = 0; j < pt.Count; j++)
                            sb.AppendFormat(", {0}", pt[j].ToString());
@@ -1153,19 +1161,21 @@ namespace GmTool {
 
       static void Info_ShowInfoItem(uint indent, string name, byte[] data, bool hex = false) {
          StringBuilder sb = new StringBuilder();
-         for (int i = 0; i < data.Length; i++) {
-            if (i > 0)
-               sb.Append(" ");
-            sb.AppendFormat("{0}", data[i]);
-         }
-         if (hex) {
-            sb.Append(" (");
+         if (data != null) {
             for (int i = 0; i < data.Length; i++) {
                if (i > 0)
                   sb.Append(" ");
-               sb.AppendFormat("0x{0:X2}", data[i]);
+               sb.AppendFormat("{0}", data[i]);
             }
-            sb.Append(")");
+            if (hex) {
+               sb.Append(" (");
+               for (int i = 0; i < data.Length; i++) {
+                  if (i > 0)
+                     sb.Append(" ");
+                  sb.AppendFormat("0x{0:X2}", data[i]);
+               }
+               sb.Append(")");
+            }
          }
          Info_ShowInfoItem(indent, name, sb.ToString());
       }

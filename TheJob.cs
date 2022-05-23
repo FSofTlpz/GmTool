@@ -33,6 +33,7 @@ using GarminCore;
 using GarminCore.DskImg;
 using GarminCore.Files;
 using GarminCore.SimpleMapInterface;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -46,7 +47,7 @@ namespace GmTool {
 
       List<string> InputFiles;
       string Output;
-      char[] wildcards = new char[] { '?', '*' };
+      readonly char[] wildcards = new char[] { '?', '*' };
 
 
       public TheJob() { }
@@ -171,6 +172,28 @@ namespace GmTool {
                   analyze.ShowAnalyzingTypesResult(opt.ToDo == Options.ToDoType.AnalyzingTypesLong);
                   break;
 
+               case Options.ToDoType.SetNewTypfile:
+                  PrepareOutputData();
+
+                  foreach (string item in opt.Input) {
+                     if (Directory.Exists(item)) {
+                        string path = item;
+                        if (!path.EndsWith(Path.DirectorySeparatorChar.ToString())) // auf jeden Fall '/' abschließen
+                           path += Path.DirectorySeparatorChar.ToString();
+                        // alle Dateien und Unterverzeichnisse dieses Pfades entfernen
+                        for (int i = InputFiles.Count - 1; i >= 0; i--) {
+                           if (InputFiles[i].Length >= path.Length &&
+                               string.Compare(InputFiles[i].Substring(0, path.Length), path, true) == 0)
+                              InputFiles.RemoveAt(i);
+
+                        }
+                        SetNewTypfile(path, Output, opt.NewTypfile.ValueAsString, opt.OutputOverwrite);
+                     }
+                  }
+                  // restliche Einzeldateien behandeln
+                  foreach (string file in InputFiles)
+                     SetNewTypfile(file, Output, opt.NewTypfile.ValueAsString, opt.OutputOverwrite);
+                  break;
             }
          } catch (Exception ex) {
             Console.Error.WriteLine("Fehler: " + ex.Message);
@@ -263,6 +286,11 @@ namespace GmTool {
 
          return true;
       }
+
+      static void ThrowNoOverwriteException(string file) {
+         throw new Exception("Die Datei '" + file + "' existiert schon, darf aber nicht überschrieben werden.");
+      }
+
 
       /// <summary>
       ///  zerlegt die Garmin-Eingabedatei (IMG oder GMP) in einzelne Dateien im angegebenen Pfad
@@ -449,8 +477,7 @@ namespace GmTool {
             if (!(ext == ".IMG" || ext == ".GMP"))
                throw new Exception("Die Zieldatei muss eine IMG- oder GMP-Datei sein.");
 
-            List<string> filelist;
-            if (PrepareFilelist4Join(files, out filelist, fordevice, fortile)) {
+            if (PrepareFilelist4Join(files, out List<string> filelist, fordevice, fortile)) {
 
                Console.WriteLine(string.Format("erzeuge Geräte-IMG-Datei '{0}' ...", outputpath));
                if (ext != ".IMG")
@@ -687,8 +714,6 @@ namespace GmTool {
 
          return newsegments;
       }
-
-
 
       #region Änderung von Eigenschaften
 
@@ -970,14 +995,16 @@ namespace GmTool {
                         int coordbits = file.TREFile.SymbolicScaleDenominatorAndBitsLevel.Bits4SubdivIdx1(i + 1);
                         Bound b = sd.GetBound4Deltas(coordbits, sdi.Center);
                         if (b != null) {
-                           List<MapUnitPoint> p = new List<MapUnitPoint>();
-                           p.Add(new MapUnitPoint(b.Left, b.Top));
-                           p.Add(new MapUnitPoint(b.Right, b.Top));
-                           p.Add(new MapUnitPoint(b.Right, b.Bottom));
-                           p.Add(new MapUnitPoint(b.Left, b.Bottom));
+                           List<MapUnitPoint> p = new List<MapUnitPoint> {
+                              new MapUnitPoint(b.Left, b.Top),
+                              new MapUnitPoint(b.Right, b.Top),
+                              new MapUnitPoint(b.Right, b.Bottom),
+                              new MapUnitPoint(b.Left, b.Bottom)
+                           };
 
-                           StdFile_RGN.RawPolyData pd = new StdFile_RGN.RawPolyData(true);
-                           pd.Type = 0x4b;
+                           StdFile_RGN.RawPolyData pd = new StdFile_RGN.RawPolyData(true) {
+                              Type = 0x4b
+                           };
                            pd.SetMapUnitPoints(coordbits, sdi.Center, p);
 
                            sd.AreaList.Add(pd);
@@ -1003,6 +1030,297 @@ namespace GmTool {
       }
 
       #endregion
+
+
+
+
+      class MapInstallInfo {
+         public ushort FamilyID = 0;
+         public ushort ProductID = 0;
+         public string TDBFile = null;
+         public string MDXFile = null;
+         public string TYPFile = null;
+
+         public MapInstallInfo() {
+         }
+
+         public MapInstallInfo(MapInstallInfo mi) {
+            FamilyID = mi.FamilyID;
+            ProductID = mi.ProductID;
+            TDBFile = mi.TDBFile;
+            MDXFile = mi.MDXFile;
+            TYPFile = mi.TYPFile;
+         }
+
+         public override string ToString() {
+            return string.Format("FamilyID={0}, ProductID={1}, TYPFile={2}, TDBFile={3}, MDXFile={4}",
+                                 FamilyID,
+                                 ProductID,
+                                 TYPFile,
+                                 TDBFile,
+                                 MDXFile);
+         }
+      }
+
+      /// <summary>
+      /// liefert einige Infos über alle installierten Karten
+      /// </summary>
+      /// <returns></returns>
+      List<MapInstallInfo> GetInfo4InstalledMaps() {
+         List<MapInstallInfo> RegisteredInstalledMaps = new List<MapInstallInfo>();
+         using (RegistryKey regKeyMapsource = Registry.LocalMachine.OpenSubKey("SOFTWARE\\Garmin\\MapSource")) {
+            foreach (string regkeyfamilies in new string[] { "Families", "FamiliesNT" }) {
+               using (RegistryKey regKeyFamilies = regKeyMapsource.OpenSubKey(regkeyfamilies)) {
+                  foreach (string familykeyname in regKeyFamilies.GetSubKeyNames()) {
+                     using (RegistryKey regKeyFamily = regKeyFamilies.OpenSubKey(familykeyname)) {
+                        object dat = regKeyFamily.GetValue("ID");
+                        if (dat != null && dat is byte[]) {
+                           byte[] tmpdat = dat as byte[];
+                           if (tmpdat.Length == 2) {
+                              MapInstallInfo mi = new MapInstallInfo();
+                              RegisteredInstalledMaps.Add(mi);
+                              mi.FamilyID = (ushort)((tmpdat[1] << 8) | tmpdat[0]);
+
+                              dat = regKeyFamily.GetValue("TYP");
+                              if (dat != null)
+                                 mi.TYPFile = dat as string;
+                              dat = regKeyFamily.GetValue("IDX");
+                              if (dat != null)
+                                 mi.MDXFile = dat as string;
+
+                              string[] familysubkeyname = regKeyFamily.GetSubKeyNames();
+                              for (int i = 0; i < familysubkeyname.Length; i++) {
+                                 if (i > 0) {
+                                    mi = new MapInstallInfo(mi);
+                                    RegisteredInstalledMaps.Add(mi);
+                                 }
+                                 try {
+                                    mi.ProductID = Convert.ToUInt16(familysubkeyname[i]);
+                                 } catch { }
+                                 using (RegistryKey regKeyFamilySub = regKeyFamily.OpenSubKey(familysubkeyname[i])) {
+                                    dat = regKeyFamilySub.GetValue("Tdb");
+                                    if (dat != null)
+                                       mi.TDBFile = dat as string;
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+            }
+         }
+         return RegisteredInstalledMaps;
+      }
+
+      /// <summary>
+      /// liefert einige Infos über alle GMAP-Karten
+      /// </summary>
+      /// <param name="dir"></param>
+      /// <returns></returns>
+      List<MapInstallInfo> GetInfo4GmapMaps(string dir = null) {
+         List<MapInstallInfo> RegisteredInstalledMaps = new List<MapInstallInfo>();
+         if (string.IsNullOrEmpty(dir))
+            // i.A. in "%ProgramData%\Garmin\maps"
+            dir = Path.Combine(Environment.GetEnvironmentVariable("ProgramData"), "GARMIN", "Maps");
+
+         foreach (string gmapdir in Directory.EnumerateDirectories(dir)) {
+            FSofTUtils.SimpleXmlDocument2 xml = new FSofTUtils.SimpleXmlDocument2(Path.Combine(gmapdir, "info.xml"));
+            if (File.Exists(Path.Combine(gmapdir, xml.XmlFilename))) {
+               xml.Validating = false; // ohne Schema
+               xml.LoadData();
+               xml.AddNamespace("x");
+               MapInstallInfo mi = new MapInstallInfo();
+
+               uint[] id = xml.ReadUInt("/x:MapProduct/x:ID", 0);
+               if (id != null && id.Length == 1 && id[0] > 0)
+                  mi.FamilyID = (ushort)id[0];
+
+               id = xml.ReadUInt("/x:MapProduct/x:SubProduct/x:ID", 0);
+               if (id != null && id.Length == 1 && id[0] > 0)
+                  mi.ProductID = (ushort)id[0];
+
+               if (mi.FamilyID > 0 && mi.ProductID > 0) {
+                  mi.MDXFile = xml.ReadValue("/x:MapProduct/x:IDX", null);
+                  mi.TYPFile = xml.ReadValue("/x:MapProduct/x:TYP", null);
+                  mi.TDBFile = xml.ReadValue("/x:MapProduct/x:SubProduct/x:TDB", null);
+
+                  RegisteredInstalledMaps.Add(mi);
+               }
+            }
+         }
+         return RegisteredInstalledMaps;
+      }
+
+
+      /// <summary>
+      /// tauscht die TYP-Datei gegen eine andere TYP-Datei aus
+      /// </summary>
+      /// <param name="srcfile">falls Verzeichnis, dann mit '/' am Ende</param>
+      /// <param name="destfile"></param>
+      /// <param name="newtypfile"></param>
+      /// <param name="overwrite"></param>
+      void SetNewTypfile(string srcfile, string destfile, string newtypfile, bool overwrite) {
+         if (Directory.Exists(srcfile)) { // Desktop-Karte
+
+            // MapInstallInfo suchen, zu der der Pfad passt
+            MapInstallInfo misrc = null;
+            foreach (MapInstallInfo mi in GetInfo4InstalledMaps()) { // Daten der installierten Karten
+               if (!string.IsNullOrEmpty(mi.TYPFile) &&
+                   srcfile.Length <= mi.TYPFile.Length &&
+                   string.Compare(srcfile, mi.TYPFile.Substring(0, srcfile.Length), true) == 0) {
+                  misrc = mi;
+                  break;
+               }
+               if (!string.IsNullOrEmpty(mi.TDBFile) &&
+                   srcfile.Length <= mi.TDBFile.Length &&
+                   string.Compare(srcfile, mi.TDBFile.Substring(0, srcfile.Length), true) == 0) {
+                  misrc = mi;
+                  break;
+               }
+               if (!string.IsNullOrEmpty(mi.MDXFile) &&
+                   srcfile.Length <= mi.MDXFile.Length &&
+                   string.Compare(srcfile, mi.MDXFile.Substring(0, srcfile.Length), true) == 0) {
+                  misrc = mi;
+                  break;
+               }
+            }
+            if (misrc == null) {
+               foreach (MapInstallInfo mi in GetInfo4GmapMaps()) { // Daten der GMPAP-Karten
+                  if (!string.IsNullOrEmpty(mi.TYPFile) &&
+                      srcfile.Length <= mi.TYPFile.Length &&
+                      string.Compare(srcfile, mi.TYPFile.Substring(0, srcfile.Length), true) == 0) {
+                     misrc = mi;
+                     break;
+                  }
+                  if (!string.IsNullOrEmpty(mi.TDBFile) &&
+                      srcfile.Length <= mi.TDBFile.Length &&
+                      string.Compare(srcfile, mi.TDBFile.Substring(0, srcfile.Length), true) == 0) {
+                     misrc = mi;
+                     break;
+                  }
+                  if (!string.IsNullOrEmpty(mi.MDXFile) &&
+                      srcfile.Length <= mi.MDXFile.Length &&
+                      string.Compare(srcfile, mi.MDXFile.Substring(0, srcfile.Length), true) == 0) {
+                     misrc = mi;
+                     break;
+                  }
+               }
+            }
+
+            if (misrc != null) {
+               /* alte TYP umbenennen in *.org
+                  neue TYP anpassen und kopieren in Original
+                */
+               Console.WriteLine("Map-Verzeichnis '" + srcfile + "'");
+               Console.WriteLine("neue Typ-Datei '" + newtypfile + "'");
+
+               destfile = misrc.TYPFile + ".last";
+               if (File.Exists(destfile) && !overwrite)
+                  ThrowNoOverwriteException(destfile);
+               File.Copy(misrc.TYPFile, misrc.TYPFile + ".last", true);
+
+               destfile = misrc.TYPFile;
+               File.Copy(newtypfile, misrc.TYPFile, true);
+
+               using (BinaryReaderWriter br_newtyp = new BinaryReaderWriter(misrc.TYPFile, true)) { // neue TYP-Datei lesbar
+                  StdFile_TYP newtyp = new StdFile_TYP(br_newtyp, true);
+                  newtyp.FamilyID = misrc.FamilyID;
+                  newtyp.ProductID = misrc.ProductID;
+                  Console.WriteLine(string.Format("FamilyID={0}, ProductID={1}", newtyp.FamilyID, newtyp.ProductID));
+               }
+            }
+
+         } else if (File.Exists(srcfile)) { // Quelle ist eine Datei -> Device-Datei
+
+            if (string.IsNullOrEmpty(destfile))
+               destfile = srcfile;
+
+            if (Directory.Exists(destfile)) // wenn Ziel ein ex. Verzeichnis ist ...
+               destfile = Path.Combine(destfile, Path.GetFileName(srcfile));
+
+            if (File.Exists(destfile) && !overwrite)
+               ThrowNoOverwriteException(destfile);
+
+
+            if (!string.IsNullOrEmpty(destfile) &&
+                Path.GetExtension(srcfile).ToUpper() == ".IMG") {
+               using (BinaryReaderWriter br_newtyp = new BinaryReaderWriter(newtypfile, true)) { // neue TYP-Datei lesbar
+                  StdFile_TYP newtyp = new StdFile_TYP(br_newtyp, true);
+
+                  using (BinaryReaderWriter br_img = new BinaryReaderWriter(File.OpenRead(srcfile))) { // IMG-Datei lesbar
+                     SimpleFilesystem sf = new SimpleFilesystem();
+                     sf.Read(br_img);
+                     Console.WriteLine(string.Format("{0} Dateie{1} in '{2}'", sf.FileCount, sf.FileCount == 1 ? "" : "n", srcfile));
+
+                     // Die ProductID und die FamilyID müssen ermittelt werden.
+                     // Zunächst wird die ev. vorhandene TYP-Datei dafür verwendet.
+                     // Anderfalls muss eine MAKEGMAP.MPS vorhanden sein. Jeder Eintrag für eine Teilkarte enthält die nötige ProductID und die FamilyID.
+
+                     ushort familyid = 0;
+                     ushort productid = 0;
+
+                     for (int i = 0; i < sf.FileCount; i++)
+                        if (Path.GetExtension(sf.Filename(i)).ToUpper() == ".TYP") { // 1. TYP-Datei verwenden
+                           using (BinaryReaderWriter br_oldtyp = sf.GetBinaryReaderWriter4File(sf.Filename(i))) {
+                              StdFile_TYP typ = new StdFile_TYP(br_oldtyp, true);
+                              familyid = typ.FamilyID;
+                              productid = typ.ProductID;
+                              Console.WriteLine(string.Format("FamilyID und ProductID aus {0} ermittelt", sf.Filename(i)));
+                              break;
+                           }
+                        }
+
+                     if (familyid == 0) // noch nicht ermittelt
+                        for (int i = 0; i < sf.FileCount; i++)
+                           if (Path.GetExtension(sf.Filename(i)).ToUpper() == ".MPS") { // MPS-Datei verwenden
+                              using (BinaryReaderWriter br_mps = sf.GetBinaryReaderWriter4File(sf.Filename(i))) {
+                                 File_MPS mps = new File_MPS();
+                                 mps.Read(br_mps);
+                                 if (mps.Maps.Count > 0) {
+                                    familyid = mps.Maps[0].FamilyID;
+                                    productid = mps.Maps[0].ProductID;
+                                    Console.WriteLine(string.Format("FamilyID und ProductID aus {0} ermittelt", sf.Filename(i)));
+                                 }
+                                 break;
+                              }
+                           }
+
+                     if (familyid == 0)
+                        Console.WriteLine("Es konnte keine alte FamilyID ermittelt werden.");
+                     else {
+                        newtyp.FamilyID = familyid;
+                        newtyp.ProductID = productid;
+                     }
+                     Console.WriteLine(string.Format("verwende FamilyID={0}, ProductID={1}", newtyp.FamilyID, newtyp.ProductID));
+
+
+                     // neue IMG schreiben
+                     string typfile = Path.GetFileName(newtypfile);
+                     List<string> files = new List<string>();
+                     for (int i = 0; i < sf.FileCount; i++) // alle Dateien außer TYP's übernehmen
+                        if (Path.GetExtension(sf.Filename(i)).ToUpper() != ".TYP")
+                           files.Add(sf.Filename(i));
+                     files.Add(typfile);
+                     sf.FileAdd(typfile, (uint)br_newtyp.LeftBytes);
+
+                     using (BinaryReaderWriter bw_newtyp = sf.GetBinaryReaderWriter4File(typfile)) {
+                        bw_newtyp.Write(br_newtyp.ReadBytes((int)br_newtyp.LeftBytes));
+                     }
+
+                     CreateNewImgfile(sf, files, destfile, overwrite);
+
+                     Console.WriteLine("neue IMG-Datei '" + destfile + "'");
+                     Console.WriteLine("neue TYP-Datei '" + newtypfile + "'");
+                     Console.WriteLine(string.Format("FamilyID={0}, ProductID={1}", newtyp.FamilyID, newtyp.ProductID));
+
+                  }
+               }
+            }
+
+         }
+      }
+
 
       #region Hilfsfunktionen
 
@@ -1058,7 +1376,7 @@ namespace GmTool {
       /// <param name="overwrite">true, wenn eine ev. schon ex. IMG-Datei überschrieben werden soll</param>
       void CreateNewImgfile(SimpleFilesystem src_sf, IList<string> files, string imgname, bool overwrite) {
          if (!overwrite && File.Exists(imgname))
-            throw new Exception("Die Datei '" + imgname + "' existiert schon, darf aber nicht überschrieben werden.");
+            ThrowNoOverwriteException(imgname);
 
          using (SimpleFilesystem sfimg = new SimpleFilesystem()) {
             using (BinaryReaderWriter bw = new BinaryReaderWriter(File.OpenWrite(imgname))) {
@@ -1088,7 +1406,7 @@ namespace GmTool {
       /// <param name="overwrite"></param>
       void CreateNewImgfile(IList<string> files, string imgname, string description, bool overwrite) {
          if (!overwrite && File.Exists(imgname))
-            throw new Exception("Die Datei '" + imgname + "' existiert schon, darf aber nicht überschrieben werden.");
+            ThrowNoOverwriteException(imgname);
 
          using (SimpleFilesystem sfimg = new SimpleFilesystem()) {
             using (BinaryReaderWriter bw = new BinaryReaderWriter(File.OpenWrite(imgname))) {
@@ -1125,7 +1443,7 @@ namespace GmTool {
       /// <param name="overwrite">true, wenn eine ev. schon ex. IMG-Datei überschrieben werden soll</param>
       static public void FileCopy(SimpleFilesystem src_sf, string srcfilename, string destfilename, bool overwrite) {
          if (!overwrite && File.Exists(destfilename))
-            throw new Exception("Die Datei '" + destfilename + "' existiert schon, darf aber nicht überschrieben werden.");
+            ThrowNoOverwriteException(destfilename);
 
          BinaryReaderWriter br = src_sf.GetBinaryReaderWriter4File(srcfilename);
          if (br != null) {
