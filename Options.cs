@@ -357,7 +357,7 @@ namespace GmTool {
 
          cmd.DefineOption((int)MyOptions.RefreshTDB, "refreshtdb", "", "liest (i.W.) die Dateiliste einer TDB neu ein", FSoftUtils.CmdlineOptions.OptionArgumentType.Nothing);
 
-         cmd.DefineOption((int)MyOptions.NewTypfile, "newtypfile", "", "ersetzt die TYP-Datei einer IMG-Datei durch eine neue", FSoftUtils.CmdlineOptions.OptionArgumentType.String);
+         cmd.DefineOption((int)MyOptions.NewTypfile, "newtypfile", "", "ersetzt die TYP-Datei einer IMG-Datei durch eine neue und passt deren PID und FID an", FSoftUtils.CmdlineOptions.OptionArgumentType.String);
 
          cmd.DefineOption((int)MyOptions.Help, "help", "?", "diese Hilfe", FSoftUtils.CmdlineOptions.OptionArgumentType.Nothing);
       }

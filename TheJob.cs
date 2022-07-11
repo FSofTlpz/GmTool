@@ -1301,11 +1301,16 @@ namespace GmTool {
                      for (int i = 0; i < sf.FileCount; i++) // alle Dateien außer TYP's übernehmen
                         if (Path.GetExtension(sf.Filename(i)).ToUpper() != ".TYP")
                            files.Add(sf.Filename(i));
-                     files.Add(typfile);
-                     sf.FileAdd(typfile, (uint)br_newtyp.LeftBytes);
 
+                     files.Add(typfile);
+                     sf.FileAdd(typfile, (uint)br_newtyp.Length);
+                     //Inhalt der neuen TYP-Datei in sf schreiben
                      using (BinaryReaderWriter bw_newtyp = sf.GetBinaryReaderWriter4File(typfile)) {
-                        bw_newtyp.Write(br_newtyp.ReadBytes((int)br_newtyp.LeftBytes));
+                        using (BinaryReaderWriter bwnewtyp = new BinaryReaderWriter()) {
+                           newtyp.Write(bwnewtyp);
+                           bwnewtyp.Position = 0;
+                           bwnewtyp.CopyTo(bw_newtyp);
+                        }
                      }
 
                      CreateNewImgfile(sf, files, destfile, overwrite);
@@ -1325,9 +1330,9 @@ namespace GmTool {
       #region Hilfsfunktionen
 
       /// <summary>
-      /// sortierte Dateiextensionen der Dateien die in einer Tile-IMG-Datei zusammengefasst werden können
+      /// sortierte Dateiextensionen der Dateien die in einer Tile-IMG-Datei zusammengefasst werden können (NICHT Device-IMG)
       /// </summary>
-      readonly string[] TILEIMGEXTENSIONS = new string[] { ".TRE", ".LBL", ".RGN", ".NET", ".NOD", ".DEM", ".MAR", ".GMP", ".SRT" };
+      readonly string[] TILEIMGEXTENSIONS = new string[] { ".TRE", ".LBL", ".RGN", ".NET", ".NOD", ".DEM" }; //, ".MAR", ".GMP", ".SRT" };
 
       /// <summary>
       /// liefert true, wenn die Datei eine Extension für eine Kachel-IMG-Einzeldatei hat
